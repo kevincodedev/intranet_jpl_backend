@@ -44,15 +44,10 @@ class KanbanController extends AbstractController
     {
         /** @var User $user */
         $user = $this->getUser();
-        
-        $tasks = $repository->findBy(['owner' => $user], ['createdAt' => 'DESC']);
-        
-        $data = [];
-        foreach ($tasks as $task) {
-            $data[] = $this->serializeTask($task);
-        }
 
-        return $this->json($data);
+        $tasks = $repository->findBy(['owner' => $user], ['createdAt' => 'DESC']);
+
+        return $this->json($tasks, 200, [], ['groups' => 'kanban:read']);
     }
 
     /**
@@ -100,7 +95,7 @@ class KanbanController extends AbstractController
         $em->persist($task);
         $em->flush();
 
-        return $this->json($this->serializeTask($task), 201);
+        return $this->json($task, 201, [], ['groups' => 'kanban:read']);
     }
 
     /**
@@ -134,7 +129,7 @@ class KanbanController extends AbstractController
 
         $em->flush();
 
-        return $this->json($this->serializeTask($task));
+        return $this->json($task, 200, [], ['groups' => 'kanban:read']);
     }
 
     /**
@@ -162,19 +157,5 @@ class KanbanController extends AbstractController
         $em->flush();
 
         return $this->json(['status' => 'success', 'message' => 'Tarea eliminada correctamente']);
-    }
-
-    private function serializeTask(KanbanTask $task): array
-    {
-        return [
-            'id' => $task->getId(),
-            'title' => $task->getTitle(),
-            'category' => $task->getCategory(),
-            'importance' => $task->getImportance(),
-            'status' => $task->getStatus(),
-            'subTasks' => $task->getSubTasks(),
-            'createdAt' => $task->getCreatedAt()->format('c'),
-            'updatedAt' => $task->getUpdatedAt() ? $task->getUpdatedAt()->format('c') : null
-        ];
     }
 }

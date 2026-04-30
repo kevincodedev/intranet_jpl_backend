@@ -20,20 +20,4 @@ class ChatMessageRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, ChatMessage::class);
     }
-
-    public function add(ChatMessage $entity, bool $flush = true): void
-    {
-        $this->_em->persist($entity);
-        if ($flush) {
-            $this->_em->flush();
-        }
-    }
-
-    public function remove(ChatMessage $entity, bool $flush = true): void
-    {
-        $this->_em->remove($entity);
-        if ($flush) {
-            $this->_em->flush();
-        }
-    }
 }

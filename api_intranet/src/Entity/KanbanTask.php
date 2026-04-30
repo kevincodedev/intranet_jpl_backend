@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\KanbanTaskRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * @ORM\Entity(repositoryClass=KanbanTaskRepository::class)
@@ -24,41 +25,49 @@ class KanbanTask
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
+     * @Groups({"kanban:read"})
      */
     private $id;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Groups({"kanban:read"})
      */
     private $title;
 
     /**
      * @ORM\Column(type="string", length=100)
+     * @Groups({"kanban:read"})
      */
     private $category;
 
     /**
      * @ORM\Column(type="string", length=50)
+     * @Groups({"kanban:read"})
      */
     private $importance;
 
     /**
      * @ORM\Column(type="string", length=50)
+     * @Groups({"kanban:read"})
      */
     private $status;
 
     /**
      * @ORM\Column(type="json", nullable=true)
+     * @Groups({"kanban:read"})
      */
     private $subTasks = [];
 
     /**
      * @ORM\Column(type="datetime")
+     * @Groups({"kanban:read"})
      */
     private $createdAt;
 
     /**
      * @ORM\Column(type="datetime", nullable=true)
+     * @Groups({"kanban:read"})
      */
     private $updatedAt;
 
