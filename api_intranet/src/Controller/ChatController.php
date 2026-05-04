@@ -28,6 +28,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Post(
      *     summary="Sends a chat message and publishes it via Mercure",
+     *     tags={"Mensajeria"},
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
@@ -108,6 +109,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Get(
      *     summary="Retrieves the last 50 messages from a specific category and topic",
+     *     tags={"Mensajeria"},
      *     @OA\Parameter(
      *         name="category",
      *         in="path",
@@ -169,6 +171,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Put(
      *     summary="Edits a chat message and notifies via Mercure",
+     *     tags={"Mensajeria"},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
@@ -265,6 +268,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Delete(
      *     summary="Deletes a chat message and notifies via Mercure",
+     *     tags={"Mensajeria"},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",

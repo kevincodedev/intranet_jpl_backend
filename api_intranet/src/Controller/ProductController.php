@@ -21,7 +21,7 @@ class ProductController extends AbstractController
      * @Route("", methods={"GET"})
      * @OA\Get(
      * summary="Lists products (including search and pagination)",
-     * tags={"Products"},
+     * tags={"Productos"},
      * @OA\Parameter(name="search", in="query", description="Search String", @OA\Schema(type="string")),
      * @OA\Parameter(name="limit", in="query", description="Page limit (25, 50, 100)", @OA\Schema(type="integer", default=25)),
      * @OA\Parameter(name="page", in="query", description="Page Number", @OA\Schema(type="integer", default=1)),
@@ -47,7 +47,7 @@ class ProductController extends AbstractController
      * @Route("", methods={"POST"})
      * @OA\Post(
      * summary="Create a new product",
-     * tags={"Products"},
+     * tags={"Productos"},
      * @OA\RequestBody(
      * @OA\JsonContent(
      * type="object",
@@ -98,7 +98,7 @@ class ProductController extends AbstractController
      * @Route("/{id}", methods={"PUT"})
      * @OA\Put(
      * summary="Update a product",
-     * tags={"Products"},
+     * tags={"Productos"},
      * @OA\Response(response=200, description="Product Updated")
      * )
      */
@@ -141,7 +141,7 @@ class ProductController extends AbstractController
      * @Route("/{id}", methods={"DELETE"})
      * @OA\Delete(
      * summary="Soft Delete a Product",
-     * tags={"Products"},
+     * tags={"Productos"},
      * @OA\Response(response=200, description="Product Eliminated")
      * )
      */

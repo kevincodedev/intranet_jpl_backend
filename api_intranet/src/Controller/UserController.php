@@ -23,7 +23,7 @@ class UserController extends AbstractController
      * @OA\Get(
      *     path="/api/users",
      *     summary="List all users",
-     *     tags={"Users"},
+     *     tags={"Usuarios"},
      *     @OA\Response(response=200, description="List of users"),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
@@ -50,7 +50,7 @@ class UserController extends AbstractController
      * @OA\Put(
      *     path="/api/users/{id}",
      *     summary="Update a user",
-     *     tags={"Users"},
+     *     tags={"Usuarios"},
      *     @OA\Parameter(name="id", in="path", description="User ID", @OA\Schema(type="integer")),
      *     @OA\RequestBody(
      *         @OA\JsonContent(
@@ -105,18 +105,6 @@ class UserController extends AbstractController
             ], 403);
         }
 
-        // // Check that role isn't applied twice
-        // if ($dto->roles !== null) {
-        //     $currentRoles = $user->getRoles();
-
-        //     // Compare the first role in the DB with the first role in the DTO
-        //     if (isset($currentRoles[0]) && isset($dto->roles[0]) && $currentRoles[0] === $dto->roles[0]) {
-        //         return $this->json([
-        //             'warning' => 'El usuario ya tiene asignado el rol: ' . $dto->roles[0]
-        //         ], 200);
-        //     }
-        // }
-
         //updates DB with values
         $dto->updateEntity($user, $encoder, $canChangeRoles);
         $em->flush();
@@ -129,7 +117,7 @@ class UserController extends AbstractController
      * @OA\Delete(
      *     path="/api/users/{id}",
      *     summary="Delete a user",
-     *     tags={"Users"},
+     *     tags={"Usuarios"},
      *     @OA\Parameter(name="id", in="path", description="User ID", @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="User deleted successfully"),
      *     @OA\Response(response=404, description="User not found"),

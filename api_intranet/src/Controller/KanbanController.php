@@ -24,6 +24,7 @@ class KanbanController extends AbstractController
      * 
      * @OA\Get(
      *     summary="Retrieves all tasks for the current user's personal board",
+     *     tags={"Tablero Kanban"},
      *     @OA\Response(
      *         response=200,
      *         description="List of tasks",
@@ -57,6 +58,7 @@ class KanbanController extends AbstractController
      * 
      * @OA\Post(
      *     summary="Creates a new task in the user's personal board",
+     *     tags={"Tablero Kanban"},
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
@@ -105,6 +107,7 @@ class KanbanController extends AbstractController
      * 
      * @OA\Put(
      *     summary="Updates a task in the user's personal board",
+     *     tags={"Tablero Kanban"},
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Task updated successfully")
      * )
@@ -139,6 +142,7 @@ class KanbanController extends AbstractController
      * 
      * @OA\Delete(
      *     summary="Deletes a task from the user's personal board",
+     *     tags={"Tablero Kanban"},
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Task deleted successfully")
      * )
