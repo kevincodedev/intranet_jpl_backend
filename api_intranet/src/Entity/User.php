@@ -49,6 +49,11 @@ class User implements UserInterface
      */
     private $password;
 
+    /**
+     * @ORM\Column(type="datetime", nullable=true)
+     */
+    private $deletedAt;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -155,4 +160,28 @@ class User implements UserInterface
         // If you store any temporary, sensitive data on the user, clear it here
         // $this->plainPassword = null;
     }
+
+    public function getDisplayName(): string
+    {
+        return trim($this->name . ' ' . $this->surname);
+    }
+
+
+    public function getDeletedAt(): ?\DateTimeInterface
+    {
+        return $this->deletedAt;
+    }
+
+    public function setDeletedAt(?\DateTimeInterface $deletedAt): self
+    {
+        $this->deletedAt = $deletedAt;
+
+        return $this;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->deletedAt === null;
+    }
 }
+

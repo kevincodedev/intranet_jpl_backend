@@ -68,8 +68,9 @@ class ProductController extends AbstractController
     //Creates a new Product
     public function create(Request $request, EntityManagerInterface $em, ValidatorInterface $validator): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
+        $data = json_decode($request->getContent(), true) ?? [];
         $product = new Product();
+
 
         //sets fields to values
         $product->setNombre($data['nombre'] ?? '');
@@ -98,7 +99,22 @@ class ProductController extends AbstractController
      * @Route("/{id}", methods={"PUT"})
      * @OA\Put(
      * summary="Update a product",
+
      * tags={"Productos"},
+     * @OA\RequestBody(
+     *     @OA\JsonContent(
+     *         type="object",
+     *         @OA\Property(property="nombre", type="string"),
+     *         @OA\Property(property="categoria", type="string"),
+     *         @OA\Property(property="marca", type="string"),
+     *         @OA\Property(property="modelo", type="string"),
+     *         @OA\Property(property="caracteristicas", type="string"),
+     *         @OA\Property(property="color", type="string"),
+     *         @OA\Property(property="serial", type="string", nullable=true),
+     *         @OA\Property(property="condicion", type="string"),
+     *         @OA\Property(property="locacion", type="string")
+     *     )
+     * ),
      * @OA\Response(response=200, description="Product Updated")
      * )
      */
@@ -112,7 +128,8 @@ class ProductController extends AbstractController
             return $this->json(['error' => 'Producto no encontrado'], 404);
         }
 
-        $data = json_decode($request->getContent(), true);
+        $data = json_decode($request->getContent(), true) ?? [];
+
 
         //sets fields to new values
         if (isset($data['nombre'])) $product->setNombre($data['nombre']);

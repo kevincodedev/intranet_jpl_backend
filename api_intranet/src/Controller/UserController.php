@@ -30,17 +30,31 @@ class UserController extends AbstractController
      */
     public function index(UserRepository $repository): JsonResponse
     {
-        $users = $repository->findAll();
+        $hasAdminAccess = $this->isGranted('ROLE_ADMIN');
+        
+        if ($hasAdminAccess) {
+            $users = $repository->findAll();
+        } else {
+            $users = $repository->findBy(['deletedAt' => null]);
+        }
+
         $data = [];
 
         foreach ($users as $user) {
-            $data[] = [
+            $userArray = [
                 'id' => $user->getId(),
                 'email' => $user->getEmail(),
                 'name' => $user->getName(),
                 'surname' => $user->getSurname(),
                 'roles' => $user->getRoles(),
             ];
+
+            if ($hasAdminAccess) {
+                $userArray['isActive'] = $user->isActive();
+                $userArray['deletedAt'] = $user->getDeletedAt() ? $user->getDeletedAt()->format('Y-m-d H:i:s') : null;
+            }
+
+            $data[] = $userArray;
         }
 
         return $this->json($data);
@@ -64,6 +78,12 @@ class UserController extends AbstractController
         if (!$user) {
             return $this->json(['error' => 'Usuario no encontrado'], 404);
         }
+
+        // Hide deleted users from non-admins
+        if (!$user->isActive() && !$this->isGranted('ROLE_ADMIN')) {
+            return $this->json(['error' => 'Usuario no encontrado'], 404);
+        }
+
 
         // Return ALL attributes for the profile view
         return $this->json([
@@ -164,9 +184,46 @@ class UserController extends AbstractController
         // Authorization check using Voter
         $this->denyAccessUnlessGranted('USER_DELETE', $user);
 
-        $em->remove($user);
+        // Soft delete
+        $user->setDeletedAt(new \DateTime());
         $em->flush();
 
-        return $this->json(['message' => 'Usuario eliminado correctamente']);
+        return $this->json(['message' => 'Usuario desactivado correctamente (borrado lógico)']);
+    }
+
+    /**
+     * @Route("/{id}/toggle-active", methods={"POST"})
+     * @OA\Post(
+     *     path="/api/users/{id}/toggle-active",
+     *     summary="Toggle user active status (soft delete/restore)",
+     *     tags={"Usuarios"},
+     *     @OA\Parameter(name="id", in="path", description="User ID", @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Status toggled successfully"),
+     *     @OA\Response(response=404, description="User not found"),
+     *     @OA\Response(response=403, description="Forbidden")
+     * )
+     */
+    public function toggleActive(int $id, UserRepository $repository, EntityManagerInterface $em): JsonResponse
+    {
+        $user = $repository->find($id);
+        if (!$user) {
+            return $this->json(['error' => 'Usuario no encontrado'], 404);
+        }
+
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        if ($user->isActive()) {
+            $user->setDeletedAt(new \DateTime());
+        } else {
+            $user->setDeletedAt(null);
+        }
+
+        $em->flush();
+
+        return $this->json([
+            'message' => $user->isActive() ? 'Usuario activado' : 'Usuario desactivado',
+            'isActive' => $user->isActive()
+        ]);
     }
 }
+

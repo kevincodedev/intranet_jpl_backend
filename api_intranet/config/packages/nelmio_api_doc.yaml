@@ -95,6 +95,33 @@ nelmio_api_doc:
                                             message: { type: string }
                         '400':
                             description: Token inválido o contraseñas no coinciden
+            /api/token/refresh:
+                post:
+                    tags: [Autenticación]
+                    summary: Refrescar token JWT usando un refresh_token
+                    security: []
+                    requestBody:
+                        required: true
+                        content:
+                            application/json:
+                                schema:
+                                    type: object
+                                    required: [refresh_token]
+                                    properties:
+                                        refresh_token: { type: string, example: "abcdef1234567890..." }
+                    responses:
+                        '200':
+                            description: Nuevo token JWT generado
+                            content:
+                                application/json:
+                                    schema:
+                                        type: object
+                                        properties:
+                                            token: { type: string }
+                                            refresh_token: { type: string }
+                        '401':
+                            description: Refresh token inválido o expirado
+
     areas:
         path_patterns:
             - ^/api(?!/doc$)  # All /api routes except /api/doc itself

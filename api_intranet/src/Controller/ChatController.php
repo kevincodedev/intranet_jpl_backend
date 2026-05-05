@@ -140,9 +140,17 @@ class ChatController extends AbstractController
      */
     public function getHistory(string $category, string $topic, ChatMessageRepository $repository): JsonResponse
     {
+        $hasAdminAccess = $this->isGranted('ROLE_ADMIN');
+
+        $criteria = ['category' => $category, 'topic' => $topic];
+
+        if (!$hasAdminAccess) {
+            $criteria['deletedAt'] = null;
+        }
+
         // Find the last 50 messages filtering by both fields in ascending order
         $messages = $repository->findBy(
-            ['category' => $category, 'topic' => $topic],
+            $criteria,
             ['createdAt' => 'ASC'],
             50
         );
@@ -150,7 +158,7 @@ class ChatController extends AbstractController
         // Return messages
         $data = [];
         foreach ($messages as $msg) {
-            $data[] = [
+            $messageData = [
                 'id' => $msg->getId(),
                 'senderId' => $msg->getSender()->getId(),
                 'senderName' => $msg->getSender()->getDisplayName(),
@@ -158,6 +166,12 @@ class ChatController extends AbstractController
                 'timestamp' => $msg->getCreatedAt()->format('c'),
                 'updatedAt' => $msg->getUpdatedAt() ? $msg->getUpdatedAt()->format('c') : null
             ];
+
+            if ($hasAdminAccess) {
+                $messageData['deletedAt'] = $msg->getDeletedAt() ? $msg->getDeletedAt()->format('c') : null;
+            }
+
+            $data[] = $messageData;
         }
 
         return $this->json($data);
@@ -316,8 +330,8 @@ class ChatController extends AbstractController
             'id' => $id
         ];
 
-        // 1. Delete from Database
-        $em->remove($chatMessage);
+        // 1. Soft Delete in Database
+        $chatMessage->setDeletedAt(new \DateTime());
         $em->flush();
 
         // 2. Notify Mercure Hub
