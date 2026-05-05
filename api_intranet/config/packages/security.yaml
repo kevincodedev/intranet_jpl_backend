@@ -12,6 +12,9 @@ security:
             entity:
                 class: App\Entity\User
                 property: email
+        refresh_token_provider:
+            id: gesdinet.jwtrefreshtoken.user_provider
+
 
     firewalls:
         dev:
@@ -27,8 +30,9 @@ security:
             stateless: true
             anonymous: true
             user_checker: security.user_checker 
-            provider: app_user_provider
+            provider: refresh_token_provider
             guard:
+
                 authenticators:
                     - gesdinet.jwtrefreshtoken.authenticator
 
@@ -36,8 +40,10 @@ security:
             pattern: ^/api/login
             stateless: true
             anonymous: true
+            provider: app_user_provider
             json_login:
                 check_path: /api/login
+
                 username_path: email
                 password_path: password
                 success_handler: lexik_jwt_authentication.handler.authentication_success
@@ -47,7 +53,9 @@ security:
             pattern: ^/api
             stateless: true
             anonymous: true
+            provider: app_user_provider
             guard:
+
                 authenticators:
                     - lexik_jwt_authentication.jwt_token_authenticator
 
@@ -61,7 +69,9 @@ security:
 
     access_control:
         - { path: ^/api/login, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/api/token/refresh, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/api/register, roles: ROLE_ADMIN }
+
         - { path: ^/reset-password, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/api/users, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/products, roles: IS_AUTHENTICATED_FULLY }
