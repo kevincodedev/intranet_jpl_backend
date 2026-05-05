@@ -28,11 +28,16 @@ class ResetPasswordController extends AbstractController
 
     private $resetPasswordHelper;
     private $entityManager;
+    private $frontendUrl;
 
-    public function __construct(ResetPasswordHelperInterface $resetPasswordHelper, EntityManagerInterface $entityManager)
-    {
+    public function __construct(
+        ResetPasswordHelperInterface $resetPasswordHelper,
+        EntityManagerInterface $entityManager,
+        string $frontendUrl
+    ) {
         $this->resetPasswordHelper = $resetPasswordHelper;
         $this->entityManager = $entityManager;
+        $this->frontendUrl = $frontendUrl;
     }
 
     /**
@@ -54,7 +59,19 @@ class ResetPasswordController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $emailData = $form->get('email')->getData();
-            $response = $this->processSendingPasswordResetEmail($emailData, $mailer);
+            
+            try {
+                $this->processSendingPasswordResetEmail($emailData, $mailer);
+            } catch (ResetPasswordExceptionInterface $e) {
+                // If it's a JSON request and we hit throttling or other issue
+                if ($request->getContentType() === 'json' || $request->isXmlHttpRequest()) {
+                    return $this->json([
+                        'error' => 'No se pudo enviar el correo: ' . $e->getReason()
+                    ], Response::HTTP_TOO_MANY_REQUESTS);
+                }
+
+                return $this->redirectToRoute('app_check_email');
+            }
 
             // JSON answer for the API calls
             if ($request->getContentType() === 'json' || $request->isXmlHttpRequest()) {
@@ -63,7 +80,7 @@ class ResetPasswordController extends AbstractController
                 ]);
             }
 
-            return $response;
+            return $this->redirectToRoute('app_check_email');
         }
 
         //Returns JSON error if the request isn´t valid
@@ -100,21 +117,34 @@ class ResetPasswordController extends AbstractController
      */
     public function reset(Request $request, UserPasswordEncoderInterface $userPasswordEncoder, string $token = null): Response
     {
-        if ($token) {
-            // Session token saved and removed form URL
-            $this->storeTokenInSession($token);
+        $isJson = $request->getContentType() === 'json' || strpos($request->headers->get('Content-Type'), 'application/json') !== false;
 
-            return $this->redirectToRoute('app_reset_password');
+        if ($token) {
+            // We store the token in session and remove it from the URL, to prevent the URL being
+            // loaded in a browser and potentially leaking the token to 3rd party JavaScript.
+            // BUT for JSON API requests, we skip this to remain stateless.
+            if (!$isJson) {
+                $this->storeTokenInSession($token);
+                return $this->redirectToRoute('app_reset_password');
+            }
+        } else {
+            $token = $this->getTokenFromSession();
         }
 
-        $token = $this->getTokenFromSession();
         if (null === $token) {
+            if ($isJson) {
+                return $this->json(['error' => 'No se encontró el token de restablecimiento.'], Response::HTTP_BAD_REQUEST);
+            }
             throw $this->createNotFoundException('No se encontró el token de restablecimiento en la URL o en la sesión.');
         }
 
         try {
             $user = $this->resetPasswordHelper->validateTokenAndFetchUser($token);
         } catch (ResetPasswordExceptionInterface $e) {
+            if ($isJson) {
+                return $this->json(['error' => 'Token inválido o expirado: ' . $e->getReason()], Response::HTTP_BAD_REQUEST);
+            }
+
             $this->addFlash('reset_password_error', sprintf(
                 '%s - %s',
                 ResetPasswordExceptionInterface::MESSAGE_PROBLEM_VALIDATE,
@@ -156,12 +186,12 @@ class ResetPasswordController extends AbstractController
                 return $this->json(['message' => 'Contraseña actualizada correctamente.']);
             }
 
-            // Return to login
-            return $this->redirect('http://localhost:3000/login');
+            // Redirect to frontend login
+            return $this->redirect($this->frontendUrl . '/login');
         }
 
         //Error JSON response
-        if (($request->getContentType() === 'json' || $request->isXmlHttpRequest()) && $form->isSubmitted()) {
+        if ($isJson && $form->isSubmitted()) {
             return $this->json(['errors' => (string) $form->getErrors(true, false)], Response::HTTP_BAD_REQUEST);
         }
 
@@ -171,39 +201,32 @@ class ResetPasswordController extends AbstractController
     }
 
     //Sends the email to the user
-    private function processSendingPasswordResetEmail(string $emailFormData, MailerInterface $mailer): RedirectResponse
+    private function processSendingPasswordResetEmail(string $emailFormData, MailerInterface $mailer): void
     {
         $user = $this->entityManager->getRepository(User::class)->findOneBy([
             'email' => $emailFormData,
         ]);
 
+        // Do not reveal whether a user account was found or not.
         if (!$user) {
-            return $this->redirectToRoute('app_check_email');
+            return;
         }
 
-        try {
-            $resetToken = $this->resetPasswordHelper->generateResetToken($user);
-        } catch (ResetPasswordExceptionInterface $e) {
-            return $this->redirectToRoute('app_check_email');
-        }
+        $resetToken = $this->resetPasswordHelper->generateResetToken($user);
 
         $email = (new TemplatedEmail())
             ->from(new Address('lmacarapaica@pafar.net', 'Testing Email'))
             ->to($user->getEmail())
-            ->subject('Your password reset request')
+            ->subject('Solicitud de restablecimiento de contraseña')
             ->htmlTemplate('reset_password/email.html.twig')
             ->context([
                 'resetToken' => $resetToken,
+                'frontendUrl' => $this->frontendUrl,
             ]);
 
         $mailer->send($email);
 
         // Saves request to database
         $this->entityManager->flush();
-
-        // Keeps the user session active
-        $this->setTokenObjectInSession($resetToken);
-
-        return $this->redirectToRoute('app_check_email');
     }
 }

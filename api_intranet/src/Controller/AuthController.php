@@ -23,7 +23,8 @@ class AuthController extends AbstractController
      * @OA\JsonContent(
      * type="object",
      * @OA\Property(property="email", type="string", example="admin@intranet.com"),
-     * @OA\Property(property="username", type="string", example="admin"),
+     * @OA\Property(property="name", type="string", example="Juan"),
+     * @OA\Property(property="surname", type="string", example="Pérez"),
      * @OA\Property(property="password", type="string", example="mi_password_seguro")
      * )
      * ),
@@ -36,14 +37,15 @@ class AuthController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         // Set Validation
-        if (!isset($data['email']) || !isset($data['password']) || !isset($data['username'])) {
-            return new JsonResponse(['error' => 'Email, usuario y password son obligatorios'], 400);
+        if (!isset($data['email']) || !isset($data['password']) || !isset($data['name']) || !isset($data['surname'])) {
+            return new JsonResponse(['error' => 'Email, nombre, apellido y password son obligatorios'], 400);
         }
 
         // Create user
         $user = new User();
         $user->setEmail($data['email']);
-        $user->setUsername($data['username']);
+        $user->setName($data['name']);
+        $user->setSurname($data['surname']);
 
         // Hash Password
         $hashedPassword = $encoder->encodePassword($user, $data['password']);
@@ -72,7 +74,8 @@ class AuthController extends AbstractController
 
         return new JsonResponse([
             'email' => $user->getEmail(),
-            'username' => $user->getDisplayName(),
+            'name' => $user->getName(),
+            'surname' => $user->getSurname(),
             'roles' => $user->getRoles(),
         ]);
     }
