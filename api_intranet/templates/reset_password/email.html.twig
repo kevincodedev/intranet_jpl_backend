@@ -1,0 +1,11 @@
+<h1>Hola!</h1>
+
+<p>Hemos recibido una solicitud para restablecer tu contraseña. Haz clic en el siguiente enlace para continuar:</p>
+
+<a href="{{ frontendUrl }}/reset-password?token={{ resetToken.token }}">
+    Restablecer contraseña
+</a>
+
+<p>Este enlace expirará en {{ resetToken.expirationMessageKey|trans(resetToken.expirationMessageData, 'ResetPasswordBundle') }}.</p>
+
+<p>Si no solicitaste restablecer tu contraseña, puedes ignorar este mensaje.</p>

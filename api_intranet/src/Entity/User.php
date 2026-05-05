@@ -28,6 +28,17 @@ class User implements UserInterface
     private $email;
 
     /**
+     * @ORM\Column(type="string", length=100)
+     * @Assert\NotBlank(message="El nombre es obligatorio")
+     */
+    private $name;
+    /**
+     * @ORM\Column(type="string", length=100)
+     * @Assert\NotBlank(message="El apellido es obligatorio")
+     */
+    private $surname;
+
+    /**
      * @ORM\Column(type="json")
      */
     private $roles = [];
@@ -43,6 +54,20 @@ class User implements UserInterface
         return $this->id;
     }
 
+    /**
+     * A visual identifier that represents this user.
+     *
+     * @see UserInterface
+     */
+    public function getUsername(): string
+    {
+        return (string) $this->email;
+    }
+
+    /**
+     * @see UserInterface
+     */
+
     public function getEmail(): ?string
     {
         return $this->email;
@@ -55,14 +80,26 @@ class User implements UserInterface
         return $this;
     }
 
-    /**
-     * A visual identifier that represents this user.
-     *
-     * @see UserInterface
-     */
-    public function getUsername(): string
+    public function getName(): string
     {
-        return (string) $this->email;
+        return $this->name;
+    }
+
+    public function setName(string $name): self
+    {
+        $this->name = $name;
+        return $this;
+    }
+
+    public function getSurname(): string
+    {
+        return $this->surname;
+    }
+
+    public function setSurname(string $surname): self
+    {
+        $this->surname = $surname;
+        return $this;
     }
 
     /**

@@ -22,13 +22,12 @@ class UserController extends AbstractController
      * @Route("", methods={"GET"})
      * @OA\Get(
      *     path="/api/users",
-     *     summary="List all users",
-     *     tags={"Users"},
+     *     summary="Returns a list of all the users",
+     *     tags={"Usuarios"},
      *     @OA\Response(response=200, description="List of users"),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    //Returns a list of all the users
     public function index(UserRepository $repository): JsonResponse
     {
         $users = $repository->findAll();
@@ -38,6 +37,8 @@ class UserController extends AbstractController
             $data[] = [
                 'id' => $user->getId(),
                 'email' => $user->getEmail(),
+                'name' => $user->getName(),
+                'surname' => $user->getSurname(),
                 'roles' => $user->getRoles(),
             ];
         }
@@ -46,11 +47,40 @@ class UserController extends AbstractController
     }
 
     /**
+     * @Route("/{id}", methods={"GET"})
+     * @OA\Get(
+     *     path="/api/users/{id}",
+     *     summary="Get details of a single user",
+     *     tags={"Usuarios"},
+     *     @OA\Parameter(name="id", in="path", description="User ID", @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="User details"),
+     *     @OA\Response(response=404, description="User not found")
+     * )
+     */
+    public function show(int $id, UserRepository $repository): JsonResponse
+    {
+        $user = $repository->find($id);
+
+        if (!$user) {
+            return $this->json(['error' => 'Usuario no encontrado'], 404);
+        }
+
+        // Return ALL attributes for the profile view
+        return $this->json([
+            'id' => $user->getId(),
+            'email' => $user->getEmail(),
+            'name' => $user->getName(),
+            'surname' => $user->getSurname(),
+            'roles' => $user->getRoles(),
+        ]);
+    }
+
+    /**
      * @Route("/{id}", methods={"PUT"})
      * @OA\Put(
      *     path="/api/users/{id}",
-     *     summary="Update a user",
-     *     tags={"Users"},
+     *     summary="Updates the credentials or roles of an user",
+     *     tags={"Usuarios"},
      *     @OA\Parameter(name="id", in="path", description="User ID", @OA\Schema(type="integer")),
      *     @OA\RequestBody(
      *         @OA\JsonContent(
@@ -66,7 +96,6 @@ class UserController extends AbstractController
      *     @OA\Response(response=400, description="Validation error")
      * )
      */
-    // Updates the credentials or roles of an user
     public function update(int $id, Request $request, UserRepository $repository, EntityManagerInterface $em, UserPasswordEncoderInterface $encoder, ValidatorInterface $validator): JsonResponse
     {
         $user = $repository->find($id);
@@ -105,18 +134,6 @@ class UserController extends AbstractController
             ], 403);
         }
 
-        // // Check that role isn't applied twice
-        // if ($dto->roles !== null) {
-        //     $currentRoles = $user->getRoles();
-
-        //     // Compare the first role in the DB with the first role in the DTO
-        //     if (isset($currentRoles[0]) && isset($dto->roles[0]) && $currentRoles[0] === $dto->roles[0]) {
-        //         return $this->json([
-        //             'warning' => 'El usuario ya tiene asignado el rol: ' . $dto->roles[0]
-        //         ], 200);
-        //     }
-        // }
-
         //updates DB with values
         $dto->updateEntity($user, $encoder, $canChangeRoles);
         $em->flush();
@@ -129,7 +146,7 @@ class UserController extends AbstractController
      * @OA\Delete(
      *     path="/api/users/{id}",
      *     summary="Delete a user",
-     *     tags={"Users"},
+     *     tags={"Usuarios"},
      *     @OA\Parameter(name="id", in="path", description="User ID", @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="User deleted successfully"),
      *     @OA\Response(response=404, description="User not found"),

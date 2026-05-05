@@ -17,6 +17,7 @@ nelmio_api_doc:
                 post:
                     tags: [Autenticación]
                     summary: Iniciar sesión y obtener token JWT
+                    security: []
                     requestBody:
                         content:
                             application/json:
@@ -34,6 +35,66 @@ nelmio_api_doc:
                                         type: object
                                         properties:
                                             token: { type: string }
+            /reset-password:
+                post:
+                    tags: [Recuperación de contraseña]
+                    summary: Solicitar enlace de restablecimiento de contraseña
+                    security: []
+                    requestBody:
+                        required: true
+                        content:
+                            application/json:
+                                schema:
+                                    type: object
+                                    required: [email]
+                                    properties:
+                                        email: { type: string, example: user@intranet.com }
+                    responses:
+                        '200':
+                            description: Correo enviado si el email existe
+                            content:
+                                application/json:
+                                    schema:
+                                        type: object
+                                        properties:
+                                            message: { type: string }
+                        '400':
+                            description: Email inválido
+            /reset-password/reset/{token}:
+                post:
+                    tags: [Recuperación de contraseña]
+                    summary: Restablecer contraseña usando el token del email
+                    security: []
+                    parameters:
+                        - name: token
+                          in: path
+                          required: true
+                          schema: { type: string }
+                          description: Token recibido en el enlace del correo
+                    requestBody:
+                        required: true
+                        content:
+                            application/json:
+                                schema:
+                                    type: object
+                                    required: [plainPassword]
+                                    properties:
+                                        plainPassword:
+                                            type: object
+                                            properties:
+                                                first: { type: string, example: nuevaPassword123 }
+                                                second: { type: string, example: nuevaPassword123 }
+                    responses:
+                        '200':
+                            description: Contraseña actualizada correctamente
+                            content:
+                                application/json:
+                                    schema:
+                                        type: object
+                                        properties:
+                                            message: { type: string }
+                        '400':
+                            description: Token inválido o contraseñas no coinciden
     areas:
         path_patterns:
-            - ^/api(?!/doc$) # Documenta todo bajo /api excepto la propia vista /api/doc
+            - ^/api(?!/doc$)  # All /api routes except /api/doc itself

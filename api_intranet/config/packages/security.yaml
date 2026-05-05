@@ -18,6 +18,20 @@ security:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
 
+        api_doc:
+            pattern: ^/api/doc
+            security: false
+            
+        refresh:
+            pattern:  ^/api/token/refresh
+            stateless: true
+            anonymous: true
+            user_checker: security.user_checker 
+            provider: app_user_provider
+            guard:
+                authenticators:
+                    - gesdinet.jwtrefreshtoken.authenticator
+
         login:
             pattern: ^/api/login
             stateless: true
@@ -37,10 +51,20 @@ security:
                 authenticators:
                     - lexik_jwt_authentication.jwt_token_authenticator
 
+        main:
+            lazy: true
+            anonymous: true
+            provider: app_user_provider
+            logout:
+                path: app_logout
+                target: http://localhost:3000/login
+
     access_control:
         - { path: ^/api/login, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/api/register, roles: ROLE_ADMIN }
+        - { path: ^/reset-password, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/api/users, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/products, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/chat, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/board, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
-        
