@@ -7,9 +7,12 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+
 /**
  * @ORM\Entity(repositoryClass=UserRepository::class)
  * @ORM\Table(name="`user`")
+ * @UniqueEntity(fields={"email"}, message="Este correo ya está registrado.")
  */
 class User implements UserInterface
 {
@@ -24,17 +27,20 @@ class User implements UserInterface
      * @ORM\Column(type="string", length=180, unique=true)
      * @Assert\NotBlank(message="El email es obligatorio")
      * @Assert\Email(message="El email '{{ value }}' no es un correo válido.")
+     * @Assert\Length(max=180, maxMessage="El email no puede tener más de {{ limit }} caracteres")
      */
     private $email;
 
     /**
      * @ORM\Column(type="string", length=100)
      * @Assert\NotBlank(message="El nombre es obligatorio")
+     * @Assert\Length(max=100, maxMessage="El nombre no puede tener más de {{ limit }} caracteres")
      */
     private $name;
     /**
      * @ORM\Column(type="string", length=100)
      * @Assert\NotBlank(message="El apellido es obligatorio")
+     * @Assert\Length(max=100, maxMessage="El apellido no puede tener más de {{ limit }} caracteres")
      */
     private $surname;
 

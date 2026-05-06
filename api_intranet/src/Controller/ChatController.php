@@ -94,7 +94,12 @@ class ChatController extends AbstractController
         );
 
         // 4. Publish message to the Hub
-        $hub->publish($update);
+        try {
+            $hub->publish($update);
+        } catch (\Exception $e) {
+            // Log the error to cPanel error logs for debugging
+            error_log('Mercure publish failed: ' . $e->getMessage());
+        }
 
         return $this->json([
             'status' => 'success',
@@ -265,7 +270,11 @@ class ChatController extends AbstractController
             json_encode($payload),
             true
         );
-        $hub->publish($update);
+        try {
+            $hub->publish($update);
+        } catch (\Exception $e) {
+            error_log('Mercure update failed: ' . $e->getMessage());
+        }
 
         return $this->json([
             'status' => 'success',
@@ -335,12 +344,16 @@ class ChatController extends AbstractController
         $em->flush();
 
         // 2. Notify Mercure Hub
-        $update = new Update(
-            $fullTopic,
-            json_encode($payload),
-            true
-        );
-        $hub->publish($update);
+        try {
+            $update = new Update(
+                $fullTopic,
+                json_encode($payload),
+                true
+            );
+            $hub->publish($update);
+        } catch (\Exception $e) {
+            error_log('Mercure delete failed: ' . $e->getMessage());
+        }
 
         return $this->json([
             'status' => 'success',
