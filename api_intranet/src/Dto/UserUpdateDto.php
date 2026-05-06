@@ -19,6 +19,12 @@ class UserUpdateDto
     /** @Assert\Type("array") */
     public $roles;
 
+    /** @Assert\Type("string") */
+    public $name;
+
+    /** @Assert\Type("string") */
+    public $surname;
+
     public $password;
 
     /**
@@ -51,10 +57,17 @@ class UserUpdateDto
             $user->setPassword($encoder->encodePassword($user, $this->password));
         }
 
+        if ($this->name) {
+            $user->setName($this->name);
+        }
+
+        if ($this->surname) {
+            $user->setSurname($this->surname);
+        }
+
         if ($this->roles && $canChangeRoles) {
             $resolved = $this->resolveRoles($user->getRoles(), $this->roles);
             $user->setRoles($resolved);
         }
     }
 }
-

@@ -66,7 +66,19 @@ class KanbanController extends AbstractController
      *             @OA\Property(property="category", type="string", example="Development"),
      *             @OA\Property(property="importance", type="string", example="alta"),
      *             @OA\Property(property="status", type="string", example="Por Hacer"),
-     *             @OA\Property(property="subTasks", type="array", @OA\Items(type="object"))
+     *             @OA\Property(
+     *                 property="subTasks",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="title", type="string", example="Check logs"),
+     *                     @OA\Property(property="isCompleted", type="boolean", example=false)
+     *                 ),
+     *                 example={
+     *                     {"title": "Configurar entorno", "isCompleted": true},
+     *                     {"title": "Instalar dependencias", "isCompleted": false}
+     *                 }
+     *             )
      *         )
      *     ),
      *     @OA\Response(response=201, description="Task created successfully")
@@ -109,6 +121,27 @@ class KanbanController extends AbstractController
      *     summary="Updates a task in the user's personal board",
      *     tags={"Tablero Kanban"},
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\RequestBody(
+     *         @OA\JsonContent(
+     *             @OA\Property(property="title", type="string", example="Fix login bug"),
+     *             @OA\Property(property="category", type="string", example="Development"),
+     *             @OA\Property(property="importance", type="string", example="alta"),
+     *             @OA\Property(property="status", type="string", example="Por Hacer"),
+     *             @OA\Property(
+     *                 property="subTasks",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="title", type="string", example="Check logs"),
+     *                     @OA\Property(property="isCompleted", type="boolean", example=false)
+     *                 ),
+     *                 example={
+     *                     {"title": "Analizar logs de error", "isCompleted": true},
+     *                     {"title": "Corregir redirección", "isCompleted": false}
+     *                 }
+     *             )
+     *         )
+     *     ),
      *     @OA\Response(response=200, description="Task updated successfully")
      * )
      */

@@ -31,7 +31,7 @@ class UserController extends AbstractController
     public function index(UserRepository $repository): JsonResponse
     {
         $hasAdminAccess = $this->isGranted('ROLE_ADMIN');
-        
+
         if ($hasAdminAccess) {
             $users = $repository->findAll();
         } else {
@@ -67,7 +67,19 @@ class UserController extends AbstractController
      *     summary="Get details of a single user",
      *     tags={"Usuarios"},
      *     @OA\Parameter(name="id", in="path", description="User ID", @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="User details"),
+     *     @OA\Response(
+     *         response=200,
+     *         description="User details",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="id", type="integer"),
+     *             @OA\Property(property="email", type="string"),
+     *             @OA\Property(property="name", type="string"),
+     *             @OA\Property(property="surname", type="string"),
+     *             @OA\Property(property="roles", type="array", @OA\Items(type="string")),
+     *             @OA\Property(property="isActive", type="boolean", description="Only for admins"),
+     *             @OA\Property(property="deletedAt", type="string", format="date-time", description="Only for admins")
+     *         )
+     *     ),
      *     @OA\Response(response=404, description="User not found")
      * )
      */
@@ -85,14 +97,20 @@ class UserController extends AbstractController
         }
 
 
-        // Return ALL attributes for the profile view
-        return $this->json([
+        $userData = [
             'id' => $user->getId(),
             'email' => $user->getEmail(),
             'name' => $user->getName(),
             'surname' => $user->getSurname(),
             'roles' => $user->getRoles(),
-        ]);
+        ];
+
+        if ($this->isGranted('ROLE_ADMIN')) {
+            $userData['isActive'] = $user->isActive();
+            $userData['deletedAt'] = $user->getDeletedAt() ? $user->getDeletedAt()->format('Y-m-d H:i:s') : null;
+        }
+
+        return $this->json($userData);
     }
 
     /**
@@ -106,6 +124,8 @@ class UserController extends AbstractController
      *         @OA\JsonContent(
      *             type="object",
      *             @OA\Property(property="email", type="string", example="user@example.com"),
+     *             @OA\Property(property="name", type="string", example="John"),
+     *             @OA\Property(property="surname", type="string", example="Doe"),
      *             @OA\Property(property="roles", type="array", @OA\Items(type="string"), example={"ROLE_ADMIN"}),
      *             @OA\Property(property="password", type="string", example="newpassword123")
      *         )
@@ -132,6 +152,8 @@ class UserController extends AbstractController
         // Maps array into DTO
         $dto = new \App\Dto\UserUpdateDto();
         $dto->email = $data['email'] ?? null;
+        $dto->name = $data['name'] ?? null;
+        $dto->surname = $data['surname'] ?? null;
         $dto->roles = $data['roles'] ?? null;
         $dto->password = $data['password'] ?? null;
 
@@ -226,4 +248,3 @@ class UserController extends AbstractController
         ]);
     }
 }
-
