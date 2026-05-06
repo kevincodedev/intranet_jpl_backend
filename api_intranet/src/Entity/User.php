@@ -27,17 +27,20 @@ class User implements UserInterface
      * @ORM\Column(type="string", length=180, unique=true)
      * @Assert\NotBlank(message="El email es obligatorio")
      * @Assert\Email(message="El email '{{ value }}' no es un correo válido.")
+     * @Assert\Length(max=180, maxMessage="El email no puede tener más de {{ limit }} caracteres")
      */
     private $email;
 
     /**
      * @ORM\Column(type="string", length=100)
      * @Assert\NotBlank(message="El nombre es obligatorio")
+     * @Assert\Length(max=100, maxMessage="El nombre no puede tener más de {{ limit }} caracteres")
      */
     private $name;
     /**
      * @ORM\Column(type="string", length=100)
      * @Assert\NotBlank(message="El apellido es obligatorio")
+     * @Assert\Length(max=100, maxMessage="El apellido no puede tener más de {{ limit }} caracteres")
      */
     private $surname;
 

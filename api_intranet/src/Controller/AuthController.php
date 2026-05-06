@@ -38,6 +38,10 @@ class AuthController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
 
+        if (!$data || !is_array($data)) {
+            return new JsonResponse(['error' => 'Datos inválidos o JSON malformado'], 400);
+        }
+
         // Set Validation
         if (!isset($data['email']) || !isset($data['password']) || !isset($data['name']) || !isset($data['surname'])) {
             return new JsonResponse(['error' => 'Email, nombre, apellido y password son obligatorios'], 400);
@@ -66,8 +70,12 @@ class AuthController extends AbstractController
         }
 
         // Save into the database
-        $em->persist($user);
-        $em->flush();
+        try {
+            $em->persist($user);
+            $em->flush();
+        } catch (\Exception $e) {
+            return new JsonResponse(['error' => 'Error al guardar el usuario en la base de datos. Verifique que los datos sean correctos.'], 500);
+        }
 
         return new JsonResponse(['message' => 'Usuario creado exitosamente'], 201);
     }
