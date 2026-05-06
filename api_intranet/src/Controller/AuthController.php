@@ -9,6 +9,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
+use App\Repository\UserRepository;
 use OpenApi\Annotations as OA;
 
 class AuthController extends AbstractController
@@ -32,7 +34,7 @@ class AuthController extends AbstractController
      * @OA\Response(response=400, description="Validation error")
      * )
      */
-    public function register(Request $request, UserPasswordEncoderInterface $encoder, EntityManagerInterface $em): JsonResponse
+    public function register(Request $request, UserPasswordEncoderInterface $encoder, EntityManagerInterface $em, ValidatorInterface $validator, UserRepository $userRepository): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
@@ -52,6 +54,16 @@ class AuthController extends AbstractController
         $user->setPassword($hashedPassword);
 
         $user->setRoles(['ROLE_USER']);
+
+        // Validate user (checks constraints like UniqueEntity and Assert\Email)
+        $errors = $validator->validate($user);
+        if (count($errors) > 0) {
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[] = $error->getMessage();
+            }
+            return new JsonResponse(['error' => implode(' ', $errorMessages)], 400);
+        }
 
         // Save into the database
         $em->persist($user);
