@@ -26,7 +26,7 @@ class ProductRepository extends ServiceEntityRepository
 
         // Incremental Search
         if ($term !== null && $term !== '') {
-            // Use andWhere so it doesn't overwrite the deletedAt filter above
+            // Use andWhere to notoverwrite the deletedAt filter above
             $qb->andWhere('p.nombre LIKE :term OR p.color LIKE :term OR p.categoria LIKE :term OR p.marca LIKE :term OR p.modelo LIKE :term OR p.serial LIKE :term OR p.locacion LIKE :term OR p.caracteristicas LIKE :term')
                 ->setParameter('term', '%' . $term . '%');
         }
@@ -57,7 +57,7 @@ class ProductRepository extends ServiceEntityRepository
                 'locacion' => $product->getLocacion(),
             ];
 
-            // If an admin is viewing, let's include the deletedAt info in the list too
+            // If admin, include deletedat info
             if (!$onlyActive) {
                 $productArray['deletedAt'] = $product->getDeletedAt() ? $product->getDeletedAt()->format('Y-m-d H:i:s') : null;
             }
