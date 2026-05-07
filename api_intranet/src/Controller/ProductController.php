@@ -89,6 +89,7 @@ class ProductController extends AbstractController
 
         $productData = [
             'id' => $product->getId(),
+            'nombre' => $product->getNombre(),
             'categoria' => $product->getCategoria(),
             'marca' => $product->getMarca(),
             'modelo' => $product->getModelo(),
