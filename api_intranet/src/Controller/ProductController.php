@@ -23,7 +23,7 @@ class ProductController extends AbstractController
      * summary="Lists products (including search and pagination)",
      * tags={"Productos"},
      * @OA\Parameter(name="search", in="query", description="Search String", @OA\Schema(type="string")),
-     * @OA\Parameter(name="limit", in="query", description="Page limit (25, 50, 100)", @OA\Schema(type="integer", default=25)),
+     * @OA\Parameter(name="limit", in="query", description="Page limit (10, 25, 50, 100)", @OA\Schema(type="integer", default=25)),
      * @OA\Parameter(name="page", in="query", description="Page Number", @OA\Schema(type="integer", default=1)),
      * @OA\Response(response=200, description="List of products")
      * )
@@ -35,11 +35,11 @@ class ProductController extends AbstractController
         $limit = $request->query->getInt('limit', 25);
         $page = $request->query->getInt('page', 1);
 
-        if (!in_array($limit, [25, 50, 100])) {
+        if (!in_array($limit, [10, 25, 50, 100])) {
             $limit = 25;
         }
 
-        // Logic: If they ARE NOT an admin, we only want active products
+        // If they ARE NOT an admin, we only want active products
         $onlyActive = !$this->isGranted('ROLE_ADMIN');
         $result = $repository->searchAndPaginate($search, $page, $limit, $onlyActive);
 

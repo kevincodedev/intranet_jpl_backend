@@ -8,6 +8,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 
 /**
  * @extends ServiceEntityRepository<User>
@@ -38,5 +39,57 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $this->_em->persist($user);
         $this->_em->flush();
     }
+    public function searchAndPaginate($term, $page = 1, $limit = 25, bool $hasAdminAccess = false)
+    {
+        $qb = $this->createQueryBuilder('u');
 
+        // Logic: Non-admins only see non-deleted users
+        if (!$hasAdminAccess) {
+            $qb->where('u.deletedAt IS NULL');
+        }
+
+        // Optional Search (Email, Name, Surname)
+        if ($term) {
+            $qb->andWhere('u.email LIKE :term OR u.name LIKE :term OR u.surname LIKE :term')
+                ->setParameter('term', '%' . $term . '%');
+        }
+
+        $qb->orderBy('u.id', 'DESC');
+
+        // Apply Pagination
+        $qb->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
+
+        $paginator = new Paginator($qb);
+        $totalItems = count($paginator);
+        $totalPages = ceil($totalItems / $limit);
+
+        $data = [];
+        foreach ($paginator as $user) {
+            $userArray = [
+                'id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'name' => $user->getName(),
+                'surname' => $user->getSurname(),
+                'roles' => $user->getRoles(),
+            ];
+
+            if ($hasAdminAccess) {
+                $userArray['isActive'] = $user->isActive();
+                $userArray['deletedAt'] = $user->getDeletedAt() ? $user->getDeletedAt()->format('Y-m-d H:i:s') : null;
+            }
+
+            $data[] = $userArray;
+        }
+
+        return [
+            'data' => $data,
+            'meta' => [
+                'total_items' => $totalItems,
+                'total_pages' => $totalPages,
+                'current_page' => (int) $page,
+                'limit' => (int) $limit
+            ]
+        ];
+    }
 }

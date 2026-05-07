@@ -24,40 +24,28 @@ class UserController extends AbstractController
      *     path="/api/users",
      *     summary="Returns a list of all the users",
      *     tags={"Usuarios"},
+     * @OA\Parameter(name="search", in="query", description="Search String", @OA\Schema(type="string")),
+     * @OA\Parameter(name="limit", in="query", description="Page limit (10, 25, 50, 100)", @OA\Schema(type="integer", default=25)),
+     * @OA\Parameter(name="page", in="query", description="Page Number", @OA\Schema(type="integer", default=1)),
      *     @OA\Response(response=200, description="List of users"),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function index(UserRepository $repository): JsonResponse
+    public function index(Request $request, UserRepository $repository): JsonResponse
     {
+        $search = $request->query->get('search', '');
+        $page = $request->query->getInt('page', 1);
+        $limit = $request->query->getInt('limit', 25);
+
+        // 2. Validate limit to prevent database stress
+        if (!in_array($limit, [10, 25, 50, 100])) {
+            $limit = 10;
+        }
+        // If they ARE NOT an admin, we only want active products
         $hasAdminAccess = $this->isGranted('ROLE_ADMIN');
+        $result = $repository->searchAndPaginate($search, $page, $limit, $hasAdminAccess);
 
-        if ($hasAdminAccess) {
-            $users = $repository->findAll();
-        } else {
-            $users = $repository->findBy(['deletedAt' => null]);
-        }
-
-        $data = [];
-
-        foreach ($users as $user) {
-            $userArray = [
-                'id' => $user->getId(),
-                'email' => $user->getEmail(),
-                'name' => $user->getName(),
-                'surname' => $user->getSurname(),
-                'roles' => $user->getRoles(),
-            ];
-
-            if ($hasAdminAccess) {
-                $userArray['isActive'] = $user->isActive();
-                $userArray['deletedAt'] = $user->getDeletedAt() ? $user->getDeletedAt()->format('Y-m-d H:i:s') : null;
-            }
-
-            $data[] = $userArray;
-        }
-
-        return $this->json($data);
+        return $this->json($result);
     }
 
     /**
