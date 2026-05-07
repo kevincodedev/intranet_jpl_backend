@@ -5,9 +5,14 @@ namespace App\Entity;
 use App\Repository\ProductRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 /**
  * @ORM\Entity(repositoryClass=ProductRepository::class)
+ * @UniqueEntity(
+ *     fields={"serial"},
+ *     message="Este número de serial ya existe en el inventario."
+ * )
  */
 class Product
 {
@@ -26,42 +31,61 @@ class Product
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Assert\NotBlank(message="La categoría es obligatoria")
      */
     private $categoria;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Assert\NotBlank(message="La marca es obligatoria")
      */
     private $marca;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Assert\NotBlank(message="El modelo es obligatorio")
      */
     private $modelo;
 
     /**
      * @ORM\Column(type="text", nullable=true)
+     * @Assert\Length(
+     *      max=100,
+     *      maxMessage="El serial no puede tener más de {{ limit }} caracteres"
+     * )
      */
     private $caracteristicas;
 
     /**
      * @ORM\Column(type="string", length=100, nullable=true)
+     * @Assert\Type("string")
+     * @Assert\Regex(
+     *     pattern="/\d/",
+     *     match=false,
+     *     message="El color no puede contener números"
+     * )
      */
     private $color;
 
     /**
-     * @ORM\Column(type="string", length=150, nullable=true)
+     * @ORM\Column(type="string", length=150, nullable=true, unique=true)
+     * @Assert\Length(max=150)
      */
     private $serial;
 
     /**
-     * @ORM\Column(type="string", length=50)
+     * @ORM\Column(type="string", length=150)
      * @Assert\NotBlank(message="La condición es obligatoria")
+     * @Assert\Length(
+     *      max=150,
+     *      maxMessage="El serial no puede tener más de {{ limit }} caracteres"
+     * )
      */
     private $condicion;
 
     /**
-     * @ORM\Column(type="string", length=255, nullable=true)
+     * @ORM\Column(type="string", length=50)
+     * @Assert\NotBlank(message="La condición es obligatoria")
      */
     private $locacion;
 
@@ -72,38 +96,113 @@ class Product
 
     // --- GETTERS Y SETTERS ---
 
-    public function getId(): ?int { return $this->id; }
-
-    public function getNombre(): ?string { return $this->nombre; }
-    public function setNombre(string $nombre): self { $this->nombre = $nombre; return $this; }
-
-    public function getCategoria(): ?string { return $this->categoria; }
-    public function setCategoria(string $categoria): self { $this->categoria = $categoria; return $this; }
-
-    public function getMarca(): ?string { return $this->marca; }
-    public function setMarca(string $marca): self { $this->marca = $marca; return $this; }
-
-    public function getModelo(): ?string { return $this->modelo; }
-    public function setModelo(string $modelo): self { $this->modelo = $modelo; return $this; }
-
-    public function getCaracteristicas(): ?string { return $this->caracteristicas; }
-    public function setCaracteristicas(?string $caracteristicas): self { $this->caracteristicas = $caracteristicas; return $this; }
-
-    public function getColor(): ?string { return $this->color; }
-    public function setColor(?string $color): self { $this->color = $color; return $this; }
-
-    public function getSerial(): ?string { return $this->serial; }
-    public function setSerial(?string $serial): self { $this->serial = $serial; return $this; }
-
-    public function getCondicion(): ?string { return $this->condicion; }
-    public function setCondicion(string $condicion): self { 
-        $this->condicion = $condicion; 
-        return $this; 
+    public function getId(): ?int
+    {
+        return $this->id;
     }
 
-    public function getLocacion(): ?string { return $this->locacion; }
-    public function setLocacion(?string $locacion): self { $this->locacion = $locacion; return $this; }
+    public function getNombre(): ?string
+    {
+        return $this->nombre;
+    }
+    public function setNombre(string $nombre): self
+    {
+        $this->nombre = $nombre;
+        return $this;
+    }
 
-    public function getDeletedAt(): ?\DateTimeInterface { return $this->deletedAt; }
-    public function setDeletedAt(?\DateTimeInterface $deletedAt): self { $this->deletedAt = $deletedAt; return $this; }
+    public function getCategoria(): ?string
+    {
+        return $this->categoria;
+    }
+    public function setCategoria(string $categoria): self
+    {
+        $this->categoria = $categoria;
+        return $this;
+    }
+
+    public function getMarca(): ?string
+    {
+        return $this->marca;
+    }
+    public function setMarca(string $marca): self
+    {
+        $this->marca = $marca;
+        return $this;
+    }
+
+    public function getModelo(): ?string
+    {
+        return $this->modelo;
+    }
+    public function setModelo(string $modelo): self
+    {
+        $this->modelo = $modelo;
+        return $this;
+    }
+
+    public function getCaracteristicas(): ?string
+    {
+        return $this->caracteristicas;
+    }
+    public function setCaracteristicas(?string $caracteristicas): self
+    {
+        $this->caracteristicas = $caracteristicas;
+        return $this;
+    }
+
+    public function getColor(): ?string
+    {
+        return $this->color;
+    }
+    public function setColor(?string $color): self
+    {
+        $this->color = $color;
+        return $this;
+    }
+
+    public function getSerial(): ?string
+    {
+        return $this->serial;
+    }
+    public function setSerial(?string $serial): self
+    {
+        $this->serial = $serial;
+        return $this;
+    }
+
+    public function getCondicion(): ?string
+    {
+        return $this->condicion;
+    }
+    public function setCondicion(string $condicion): self
+    {
+        $this->condicion = $condicion;
+        return $this;
+    }
+
+    public function getLocacion(): ?string
+    {
+        return $this->locacion;
+    }
+    public function setLocacion(?string $locacion): self
+    {
+        $this->locacion = $locacion;
+        return $this;
+    }
+
+    public function getDeletedAt(): ?\DateTimeInterface
+    {
+        return $this->deletedAt;
+    }
+    public function setDeletedAt(?\DateTimeInterface $deletedAt): self
+    {
+        $this->deletedAt = $deletedAt;
+        return $this;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->deletedAt === null;
+    }
 }

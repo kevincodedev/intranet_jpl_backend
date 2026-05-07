@@ -94,14 +94,10 @@ class KanbanController extends AbstractController
             return $this->json(['error' => 'El título es obligatorio'], 400);
         }
 
-        if (empty($data['importance'])) {
-            return $this->json(['error' => 'La importancia es obligatoria (alta, mediana o baja)'], 400);
-        }
-
         $task = new KanbanTask();
         $task->setTitle($data['title']);
         $task->setCategory($data['category'] ?? 'General');
-        $task->setImportance($data['importance']);
+        $task->setImportance($data['importance'] ?? 'mediana');
         $task->setStatus($data['status'] ?? KanbanTask::STATUS_BACKLOG);
         $task->setSubTasks($data['subTasks'] ?? []);
         $task->setOwner($user);
