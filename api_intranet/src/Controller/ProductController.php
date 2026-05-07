@@ -39,8 +39,72 @@ class ProductController extends AbstractController
             $limit = 25;
         }
 
-        $result = $repository->searchAndPaginate($search, $page, $limit);
+        // Logic: If they ARE NOT an admin, we only want active products
+        $onlyActive = !$this->isGranted('ROLE_ADMIN');
+        $result = $repository->searchAndPaginate($search, $page, $limit, $onlyActive);
+
         return $this->json($result);
+    }
+
+    /**
+     * @Route("/{id}", methods={"GET"})
+     * @OA\Get(
+     *     path="/api/products/{id}",
+     *     summary="Get details of a single product",
+     *     tags={"Productos"},
+     *     @OA\Parameter(name="id", in="path", description="Product ID", @OA\Schema(type="integer")),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Product details",
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="nombre", type="string", example="Laptop ThinkPad"),
+     *             @OA\Property(property="categoria", type="string", example="Computación"),
+     *             @OA\Property(property="marca", type="string", example="Lenovo"),
+     *             @OA\Property(property="modelo", type="string", example="T14 Gen 2"),
+     *             @OA\Property(property="caracteristicas", type="string", example="16GB RAM, 512GB SSD"),
+     *             @OA\Property(property="color", type="string", example="Negro"),
+     *             @OA\Property(property="serial", type="string", nullable=true, example=null),
+     *             @OA\Property(property="condicion", type="string", example="Nuevo"),
+     *             @OA\Property(property="locacion", type="string", example="Almacén Principal"),
+     *             @OA\Property(property="deletedAt", type="string", nullable=true, example=null)
+     *         )
+     *     ),
+     *     @OA\Response(response=404, description="Product not found")
+     * )
+     */
+    public function show(int $id, ProductRepository $repository): JsonResponse
+    {
+        $product = $repository->find($id);
+
+        if (!$product) {
+            return $this->json(['error' => 'Producto no encontrado'], 404);
+        }
+
+        // Hide deleted products from non-admins
+        if (!$product->isActive() && !$this->isGranted('ROLE_ADMIN')) {
+            return $this->json(['error' => 'Producto no encontrado'], 404);
+        }
+
+
+        $productData = [
+            'id' => $product->getId(),
+            'categoria' => $product->getCategoria(),
+            'marca' => $product->getMarca(),
+            'modelo' => $product->getModelo(),
+            'caracteristicas' => $product->getCaracteristicas(),
+            'color' => $product->getColor(),
+            'serial' => $product->getSerial(),
+            'condicion' => $product->getCondicion(),
+            'locacion' => $product->getLocacion(),
+            'deletedAt' => $product->getDeletedAt(),
+        ];
+
+        if ($this->isGranted('ROLE_ADMIN')) {
+            $productData['deletedAt'] = $product->getDeletedAt() ? $product->getDeletedAt()->format('Y-m-d H:i:s') : null;
+        }
+
+        return $this->json($productData);
     }
 
     /**
@@ -83,6 +147,7 @@ class ProductController extends AbstractController
         $product->setCondicion($data['condicion'] ?? '');
         $product->setLocacion($data['locacion'] ?? null);
 
+
         // El @Assert\Validates each field with the product entity
         $errors = $validator->validate($product);
         if (count($errors) > 0) {
@@ -98,24 +163,24 @@ class ProductController extends AbstractController
     /**
      * @Route("/{id}", methods={"PUT"})
      * @OA\Put(
-     * summary="Update a product",
-
-     * tags={"Productos"},
-     * @OA\RequestBody(
-     *     @OA\JsonContent(
-     *         type="object",
-     *         @OA\Property(property="nombre", type="string"),
-     *         @OA\Property(property="categoria", type="string"),
-     *         @OA\Property(property="marca", type="string"),
-     *         @OA\Property(property="modelo", type="string"),
-     *         @OA\Property(property="caracteristicas", type="string"),
-     *         @OA\Property(property="color", type="string"),
-     *         @OA\Property(property="serial", type="string", nullable=true),
-     *         @OA\Property(property="condicion", type="string"),
-     *         @OA\Property(property="locacion", type="string")
-     *     )
-     * ),
-     * @OA\Response(response=200, description="Product Updated")
+     *     summary="Update a product",
+     *     tags={"Productos"},
+     *     @OA\RequestBody(
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="nombre", type="string"),
+     *             @OA\Property(property="categoria", type="string"),
+     *             @OA\Property(property="marca", type="string"),
+     *             @OA\Property(property="modelo", type="string"),
+     *             @OA\Property(property="caracteristicas", type="string"),
+     *             @OA\Property(property="color", type="string"),
+     *             @OA\Property(property="serial", type="string", nullable=true),
+     *             @OA\Property(property="condicion", type="string"),
+     *             @OA\Property(property="locacion", type="string"),
+     *             @OA\Property(property="deletedAt", type="string", nullable=true, example=null)
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Product Updated")
      * )
      */
     //Updates a product
@@ -123,8 +188,8 @@ class ProductController extends AbstractController
     {
         $product = $repository->find($id);
 
-        //checks if an id was entered or item was deleted
-        if (!$product || $product->getDeletedAt() !== null) {
+        //checks if a valid id was entered 
+        if (!$product) {
             return $this->json(['error' => 'Producto no encontrado'], 404);
         }
 
@@ -176,5 +241,41 @@ class ProductController extends AbstractController
         $em->flush();
 
         return $this->json(['message' => 'Producto eliminado lógicamente']);
+    }
+
+    /**
+     * @Route("/{id}/toggle-active", methods={"POST"})
+     * @OA\Post(
+     *     path="/api/products/{id}/toggle-active",
+     *     summary="Toggle product active/inactive status",
+     *     tags={"Productos"},
+     *     @OA\Parameter(name="id", in="path", description="Product ID", @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Status toggled"),
+     *     @OA\Response(response=404, description="Product not found")
+     * )
+     */
+    public function toggleActive(int $id, ProductRepository $repository, EntityManagerInterface $em): JsonResponse
+    {
+        $product = $repository->find($id);
+
+        if (!$product) {
+            return $this->json(['error' => 'Producto no encontrado'], 404);
+        }
+
+        // Restrict this action to admins only
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        if ($product->isActive()) {
+            $product->setDeletedAt(new \DateTime());
+        } else {
+            $product->setDeletedAt(null);
+        }
+
+        $em->flush();
+
+        return $this->json([
+            'message' => $product->isActive() ? 'Producto activado' : 'Producto desactivado',
+            'isActive' => $product->isActive()
+        ]);
     }
 }

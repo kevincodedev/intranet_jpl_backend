@@ -15,13 +15,18 @@ class ProductRepository extends ServiceEntityRepository
     }
 
     //function handling search field and pagination
-    public function searchAndPaginate($term, $page = 1, $limit = 25)
+    public function searchAndPaginate($term, $page = 1, $limit = 25, bool $onlyActive = true)
     {
-        $qb = $this->createQueryBuilder('p')
-            ->where('p.deletedAt IS NULL'); // Ignore Soft Deleted rows
+        $qb = $this->createQueryBuilder('p');
 
-        // Incremental Search, perhaps too inclusive, does NOT check for ID
+        // Only filter by deletedAt if $onlyActive is true (non-admins)
+        if ($onlyActive) {
+            $qb->where('p.deletedAt IS NULL');
+        }
+
+        // Incremental Search
         if ($term !== null && $term !== '') {
+            // Use andWhere to notoverwrite the deletedAt filter above
             $qb->andWhere('p.nombre LIKE :term OR p.color LIKE :term OR p.categoria LIKE :term OR p.marca LIKE :term OR p.modelo LIKE :term OR p.serial LIKE :term OR p.locacion LIKE :term OR p.caracteristicas LIKE :term')
                 ->setParameter('term', '%' . $term . '%');
         }
@@ -37,10 +42,9 @@ class ProductRepository extends ServiceEntityRepository
         $totalItems = count($paginator);
         $totalPages = ceil($totalItems / $limit);
 
-        //defines what categories the search returns
         $data = [];
         foreach ($paginator as $product) {
-            $data[] = [
+            $productArray = [
                 'id' => $product->getId(),
                 'nombre' => $product->getNombre(),
                 'categoria' => $product->getCategoria(),
@@ -52,9 +56,15 @@ class ProductRepository extends ServiceEntityRepository
                 'condicion' => $product->getCondicion(),
                 'locacion' => $product->getLocacion(),
             ];
+
+            // If admin, include deletedat info
+            if (!$onlyActive) {
+                $productArray['deletedAt'] = $product->getDeletedAt() ? $product->getDeletedAt()->format('Y-m-d H:i:s') : null;
+            }
+
+            $data[] = $productArray;
         }
 
-        //returns the data and additional pagination info
         return [
             'data' => $data,
             'meta' => [
