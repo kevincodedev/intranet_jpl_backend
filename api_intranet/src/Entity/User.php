@@ -6,7 +6,6 @@ use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Validator\Constraints as Assert;
-
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 /**
@@ -37,6 +36,7 @@ class User implements UserInterface
      * @Assert\Length(max=100, maxMessage="El nombre no puede tener más de {{ limit }} caracteres")
      */
     private $name;
+
     /**
      * @ORM\Column(type="string", length=100)
      * @Assert\NotBlank(message="El apellido es obligatorio")
@@ -45,9 +45,10 @@ class User implements UserInterface
     private $surname;
 
     /**
-     * @ORM\Column(type="json")
+     * @ORM\ManyToOne(targetEntity=Role::class, inversedBy="users")
+     * @ORM\JoinColumn(name="role_id", referencedColumnName="id", nullable=true)
      */
-    private $roles = [];
+    private $role;
 
     /**
      * @var string The hashed password
@@ -65,20 +66,6 @@ class User implements UserInterface
         return $this->id;
     }
 
-    /**
-     * A visual identifier that represents this user.
-     *
-     * @see UserInterface
-     */
-    public function getUsername(): string
-    {
-        return (string) $this->email;
-    }
-
-    /**
-     * @see UserInterface
-     */
-
     public function getEmail(): ?string
     {
         return $this->email;
@@ -87,7 +74,6 @@ class User implements UserInterface
     public function setEmail(string $email): self
     {
         $this->email = $email;
-
         return $this;
     }
 
@@ -113,28 +99,35 @@ class User implements UserInterface
         return $this;
     }
 
+    public function getDisplayName(): string //Name to be shown on Site
+    {
+        return trim($this->name . ' ' . $this->surname);
+    }
+
+    public function getUsername(): string //Symfony requirement, using email
+    {
+        return (string) $this->email;
+    }
+
     /**
      * @see UserInterface
      */
     public function getRoles(): array
     {
-        $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
+        $roles = [];
+
+        if ($this->role) {
+            $roles[] = $this->role->getName();
+            foreach ($this->role->getPermissions() as $permission) {
+                $roles[] = $permission->getName();
+            }
+        }
+
         $roles[] = 'ROLE_USER';
 
         return array_unique($roles);
     }
 
-    public function setRoles(array $roles): self
-    {
-        $this->roles = $roles;
-
-        return $this;
-    }
-
-    /**
-     * @see UserInterface
-     */
     public function getPassword(): string
     {
         return $this->password;
@@ -143,35 +136,26 @@ class User implements UserInterface
     public function setPassword(string $password): self
     {
         $this->password = $password;
-
         return $this;
     }
 
-    /**
-     * Returning a salt is only needed, if you are not using a modern
-     * hashing algorithm (e.g. bcrypt or sodium) in your security.yaml.
-     *
-     * @see UserInterface
-     */
     public function getSalt(): ?string
     {
         return null;
     }
 
-    /**
-     * @see UserInterface
-     */
-    public function eraseCredentials()
+    public function eraseCredentials(): void {}
+
+    public function getRole(): ?Role
     {
-        // If you store any temporary, sensitive data on the user, clear it here
-        // $this->plainPassword = null;
+        return $this->role;
     }
 
-    public function getDisplayName(): string
+    public function setRole(?Role $role): self
     {
-        return trim($this->name . ' ' . $this->surname);
+        $this->role = $role;
+        return $this;
     }
-
 
     public function getDeletedAt(): ?\DateTimeInterface
     {
@@ -181,13 +165,11 @@ class User implements UserInterface
     public function setDeletedAt(?\DateTimeInterface $deletedAt): self
     {
         $this->deletedAt = $deletedAt;
-
         return $this;
     }
 
-    public function isActive(): bool
+    public function isActive(): bool //checks for soft delete
     {
         return $this->deletedAt === null;
     }
 }
-

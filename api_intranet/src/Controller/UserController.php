@@ -25,7 +25,8 @@ class UserController extends AbstractController
      *     summary="Returns a list of all the users",
      *     tags={"Usuarios"},
      * @OA\Parameter(name="search", in="query", description="Search String", @OA\Schema(type="string")),
-     * @OA\Parameter(name="limit", in="query", description="Page limit (10, 25, 50, 100)", @OA\Schema(type="integer", default=25)),
+     * @OA\Parameter(name="role", in="query", description="Filter by role name (e.g. ROLE_ADMIN)", @OA\Schema(type="string")),
+     * @OA\Parameter(name="limit", in="query", description="Page limit (10, 25, 50, 100)", @OA\Schema(type="integer", default=10)),
      * @OA\Parameter(name="page", in="query", description="Page Number", @OA\Schema(type="integer", default=1)),
      *     @OA\Response(response=200, description="List of users"),
      *     @OA\Response(response=401, description="Unauthorized")
@@ -34,6 +35,7 @@ class UserController extends AbstractController
     public function index(Request $request, UserRepository $repository): JsonResponse
     {
         $search = $request->query->get('search', '');
+        $role = $request->query->get('role');
         $page = $request->query->getInt('page', 1);
         $limit = $request->query->getInt('limit', 25);
 
@@ -41,9 +43,9 @@ class UserController extends AbstractController
         if (!in_array($limit, [10, 25, 50, 100])) {
             $limit = 10;
         }
-        // If they ARE NOT an admin, we only want active products
-        $hasAdminAccess = $this->isGranted('ROLE_ADMIN');
-        $result = $repository->searchAndPaginate($search, $page, $limit, $hasAdminAccess);
+        // If they have permission to see deleted users, we don't filter them out
+        $hasPermissionToSeeDeleted = $this->isGranted('USER_VIEW_DELETED');
+        $result = $repository->searchAndPaginate($search, $page, $limit, $hasPermissionToSeeDeleted, $role);
 
         return $this->json($result);
     }
@@ -79,8 +81,8 @@ class UserController extends AbstractController
             return $this->json(['error' => 'Usuario no encontrado'], 404);
         }
 
-        // Hide deleted users from non-admins
-        if (!$user->isActive() && !$this->isGranted('ROLE_ADMIN')) {
+        // Hide deleted users from users without view_deleted permission
+        if (!$user->isActive() && !$this->isGranted('USER_VIEW_DELETED')) {
             return $this->json(['error' => 'Usuario no encontrado'], 404);
         }
 
@@ -90,10 +92,12 @@ class UserController extends AbstractController
             'email' => $user->getEmail(),
             'name' => $user->getName(),
             'surname' => $user->getSurname(),
-            'roles' => $user->getRoles(),
+            'role' => $user->getRole() ? $user->getRole()->getName() : 'ROLE_USER',
         ];
 
-        if ($this->isGranted('ROLE_ADMIN')) {
+        // Only show detailed permissions and status to admins or to the user themselves
+        if ($this->isGranted('USER_VIEW_DELETED') || $user === $this->getUser()) {
+            $userData['roles'] = $user->getRoles();
             $userData['isActive'] = $user->isActive();
             $userData['deletedAt'] = $user->getDeletedAt() ? $user->getDeletedAt()->format('Y-m-d H:i:s') : null;
         }
@@ -114,7 +118,7 @@ class UserController extends AbstractController
      *             @OA\Property(property="email", type="string", example="user@example.com"),
      *             @OA\Property(property="name", type="string", example="John"),
      *             @OA\Property(property="surname", type="string", example="Doe"),
-     *             @OA\Property(property="roles", type="array", @OA\Items(type="string"), example={"ROLE_ADMIN"}),
+     *             @OA\Property(property="rol", type="string", example="ROLE_ADMIN"),
      *             @OA\Property(property="password", type="string", example="newpassword123")
      *         )
      *     ),
@@ -124,7 +128,7 @@ class UserController extends AbstractController
      *     @OA\Response(response=400, description="Validation error")
      * )
      */
-    public function update(int $id, Request $request, UserRepository $repository, EntityManagerInterface $em, UserPasswordEncoderInterface $encoder, ValidatorInterface $validator): JsonResponse
+    public function update(int $id, Request $request, UserRepository $repository, EntityManagerInterface $em, UserPasswordEncoderInterface $encoder, ValidatorInterface $validator, \App\Repository\RoleRepository $roleRepository): JsonResponse
     {
         $user = $repository->find($id);
         // If the user doesn't exist, throw error
@@ -142,7 +146,7 @@ class UserController extends AbstractController
         $dto->email = $data['email'] ?? null;
         $dto->name = $data['name'] ?? null;
         $dto->surname = $data['surname'] ?? null;
-        $dto->roles = $data['roles'] ?? null;
+        $dto->role = $data['role'] ?? $data['rol'] ?? null;
         $dto->password = $data['password'] ?? null;
 
         // Validates data
@@ -153,19 +157,25 @@ class UserController extends AbstractController
 
         // Checks if user has permission to edit an user role, if not, disallows
         $canEditRoles = $this->isGranted('USER_EDIT_ROLES', $user);
-        $isTryingToGrantSuper = $dto->roles && in_array('ROLE_SUPER_ADMIN', $dto->roles);
+        $isTryingToGrantSuper = $dto->role === 'ROLE_SUPER_ADMIN';
         // Calculate if a role change to super user is allowed
         $canChangeRoles = $canEditRoles && (!$isTryingToGrantSuper || $this->isGranted('ROLE_SUPER_ADMIN'));
 
         // Checks if user has permission to change roles of another
-        if ($dto->roles !== null && !$canChangeRoles) {
-            return $this->json([
-                'error' => 'No tienes permisos para modificar los roles de este usuario o asignar el rango solicitado.'
-            ], 403);
+        if ($dto->role !== null) {
+            if (!$canChangeRoles) {
+                return $this->json(['error' => 'No tienes permisos para modificar los roles.'], 403);
+            }
+
+            // Check if the role actually exists
+            $roleExists = $roleRepository->findOneBy(['name' => $dto->role]);
+            if (!$roleExists && $dto->role !== 'ROLE_USER') {
+                return $this->json(['error' => sprintf('El rol "%s" no existe. Debe crearlo primero.', $dto->role)], 400);
+            }
         }
 
         //updates DB with values
-        $dto->updateEntity($user, $encoder, $canChangeRoles);
+        $dto->updateEntity($user, $encoder, $canChangeRoles, $roleRepository);
         $em->flush();
 
         return $this->json(['message' => 'Usuario actualizado correctamente']);
@@ -220,7 +230,7 @@ class UserController extends AbstractController
             return $this->json(['error' => 'Usuario no encontrado'], 404);
         }
 
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        $this->denyAccessUnlessGranted('USER_DELETE', $user);
 
         if ($user->isActive()) {
             $user->setDeletedAt(new \DateTime());

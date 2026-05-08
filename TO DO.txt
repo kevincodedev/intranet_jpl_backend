@@ -1,0 +1,15 @@
+should refresh tokens get deleted over time
+check that the permissions are all there
+implement api for GET user and product filtering role/category
+clean code and remove ubiquitous
+user self delete mailer 
+delete mailer  in server .env
+inactive filtering on search 
+
+ENTITY CHECKS DONE, REPO AND CONTROLLER LEFT TO DO
+implement ROLE_USER in script bootstrap
+
+front end notes:
+(user: search bar searches names and email, need a dropdown for role) / preguntar sirelis como lo quiere
+check difference between role() and roles() when admin and not
+roles use title for front end, name for backend (DECIDE HOW THIS WILL WORK)

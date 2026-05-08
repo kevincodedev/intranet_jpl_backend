@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\KanbanTaskRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ORM\Entity(repositoryClass=KanbanTaskRepository::class)
@@ -12,11 +13,13 @@ use Symfony\Component\Serializer\Annotation\Groups;
  */
 class KanbanTask
 {
+    // Status Constants
     const STATUS_BACKLOG = 'En espera';
     const STATUS_TODO = 'Por Hacer';
     const STATUS_IN_PROGRESS = 'En Progreso';
-    const STATUS_COMPLETE = 'Completadas';
+    const STATUS_COMPLETE = 'Completado';
 
+    // Importance Constants
     const IMPORTANCE_LOW = 'baja';
     const IMPORTANCE_MEDIUM = 'mediana';
     const IMPORTANCE_HIGH = 'alta';
@@ -31,33 +34,44 @@ class KanbanTask
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @Assert\NotBlank(message="El título es obligatorio")
      * @Groups({"kanban:read"})
      */
     private $title;
 
     /**
      * @ORM\Column(type="string", length=100)
+     * @Assert\NotBlank(message="La categoría es obligatoria")
      * @Groups({"kanban:read"})
      */
     private $category;
 
     /**
-     * @ORM\Column(type="string", length=50)
+     * @ORM\Column(type="string", length=20)
+     * @Assert\Choice(choices={self::IMPORTANCE_LOW, self::IMPORTANCE_MEDIUM, self::IMPORTANCE_HIGH})
      * @Groups({"kanban:read"})
      */
-    private $importance;
+    private $importance = self::IMPORTANCE_MEDIUM;
 
     /**
      * @ORM\Column(type="string", length=50)
+     * @Assert\Choice(choices={self::STATUS_BACKLOG, self::STATUS_TODO, self::STATUS_IN_PROGRESS, self::STATUS_COMPLETE})
      * @Groups({"kanban:read"})
      */
-    private $status;
+    private $status = self::STATUS_BACKLOG;
 
     /**
-     * @ORM\Column(type="json", nullable=true)
+     * @ORM\Column(type="json")
      * @Groups({"kanban:read"})
      */
-    private $subTasks = [];
+    private $subtasks = [];
+
+    /**
+     * @ORM\ManyToOne(targetEntity=User::class)
+     * @ORM\JoinColumn(nullable=false)
+     * @Groups({"kanban:read"})
+     */
+    private $owner;
 
     /**
      * @ORM\Column(type="datetime")
@@ -67,22 +81,8 @@ class KanbanTask
 
     /**
      * @ORM\Column(type="datetime", nullable=true)
-     * @Groups({"kanban:read"})
      */
-    private $updatedAt;
-
-    /**
-     * @ORM\ManyToOne(targetEntity=User::class)
-     * @ORM\JoinColumn(nullable=false)
-     */
-    private $owner;
-
-    public function __construct()
-    {
-        $this->createdAt = new \DateTime();
-        $this->status = self::STATUS_BACKLOG;
-        $this->importance = self::IMPORTANCE_MEDIUM;
-    }
+    private $deletedAt;
 
     public function getId(): ?int
     {
@@ -133,36 +133,14 @@ class KanbanTask
         return $this;
     }
 
-    public function getSubTasks(): ?array
+    public function getSubtasks(): ?array
     {
-        return $this->subTasks;
+        return $this->subtasks;
     }
 
-    public function setSubTasks(?array $subTasks): self
+    public function setSubtasks(array $subtasks): self
     {
-        $this->subTasks = $subTasks;
-        return $this;
-    }
-
-    public function getCreatedAt(): ?\DateTimeInterface
-    {
-        return $this->createdAt;
-    }
-
-    public function setCreatedAt(\DateTimeInterface $createdAt): self
-    {
-        $this->createdAt = $createdAt;
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeInterface
-    {
-        return $this->updatedAt;
-    }
-
-    public function setUpdatedAt(?\DateTimeInterface $updatedAt): self
-    {
-        $this->updatedAt = $updatedAt;
+        $this->subtasks = $subtasks;
         return $this;
     }
 
@@ -177,11 +155,33 @@ class KanbanTask
         return $this;
     }
 
-    /**
-     * @ORM\PreUpdate
-     */
-    public function updateTimestamp(): void
+    public function getCreatedAt(): ?\DateTimeInterface
     {
-        $this->updatedAt = new \DateTime();
+        return $this->createdAt;
+    }
+
+    /**
+     * @ORM\PrePersist
+     */
+    public function setCreatedAtValue(): void
+    {
+        $this->createdAt = new \DateTime();
+    }
+
+
+    public function getDeletedAt(): ?\DateTimeInterface
+    {
+        return $this->deletedAt;
+    }
+
+    public function setDeletedAt(?\DateTimeInterface $deletedAt): self
+    {
+        $this->deletedAt = $deletedAt;
+        return $this;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->deletedAt === null;
     }
 }

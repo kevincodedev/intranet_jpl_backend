@@ -66,14 +66,14 @@ class UserVoter extends Voter
             return $this->security->isGranted('ROLE_SUPER_ADMIN');
         }
 
-        // Else admins can modify roles
-        return $this->security->isGranted('ROLE_ADMIN');
+        // Else users with USER_MANAGE permission can modify others
+        return $this->security->isGranted('USER_MANAGE');
     }
 
     private function canEditRoles(User $targetUser, User $authenticatedUser): bool
     {
-        // Only ADMIN or above can edit roles and they can't edit roles of a SUPER_ADMIN
-        if ($this->security->isGranted('ROLE_ADMIN')) {
+        // Only users with USER_MANAGE permission or above can edit roles and they can't edit roles of a SUPER_ADMIN
+        if ($this->security->isGranted('USER_MANAGE')) {
             return !in_array('ROLE_SUPER_ADMIN', $targetUser->getRoles());
         }
 
@@ -87,8 +87,8 @@ class UserVoter extends Voter
             return false;
         }
 
-        // Admin can delete others unless the target is a SUPER_ADMIN
-        if ($this->security->isGranted('ROLE_ADMIN')) {
+        // Users with USER_MANAGE permission can delete others unless the target is a SUPER_ADMIN
+        if ($this->security->isGranted('USER_MANAGE')) {
             return !in_array('ROLE_SUPER_ADMIN', $targetUser->getRoles());
         }
 

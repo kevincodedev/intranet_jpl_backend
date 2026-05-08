@@ -25,9 +25,7 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         parent::__construct($registry, User::class);
     }
 
-    /**
-     * Used to upgrade (rehash) the user's password automatically over time.
-     */
+    //Rehashes the user's password automatically over time.
     public function upgradePassword(UserInterface $user, string $newHashedPassword): void
     {
         if (!$user instanceof User) {
@@ -39,9 +37,12 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $this->_em->persist($user);
         $this->_em->flush();
     }
-    public function searchAndPaginate($term, $page = 1, $limit = 25, bool $hasAdminAccess = false)
+    //Queries only the page requested
+    public function searchAndPaginate($term, $page = 1, $limit = 25, bool $hasAdminAccess = false, ?string $role = null)
     {
-        $qb = $this->createQueryBuilder('u');
+        $qb = $this->createQueryBuilder('u')
+            ->leftJoin('u.role', 'r')
+            ->addSelect('r'); // loads role into query to avoid N+1 queries
 
         // Logic: Non-admins only see non-deleted users
         if (!$hasAdminAccess) {
@@ -52,6 +53,12 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         if ($term) {
             $qb->andWhere('u.email LIKE :term OR u.name LIKE :term OR u.surname LIKE :term')
                 ->setParameter('term', '%' . $term . '%');
+        }
+
+        // Role Filter
+        if ($role) {
+            $qb->andWhere('r.name = :role')
+                ->setParameter('role', $role);
         }
 
         $qb->orderBy('u.id', 'DESC');
@@ -71,17 +78,18 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
                 'email' => $user->getEmail(),
                 'name' => $user->getName(),
                 'surname' => $user->getSurname(),
-                'roles' => $user->getRoles(),
+                'role' => $user->getRole() ? $user->getRole()->getName() : 'ROLE_USER',
             ];
-
+            //Admins have access to unactive roles and their detialed role permission list
             if ($hasAdminAccess) {
                 $userArray['isActive'] = $user->isActive();
                 $userArray['deletedAt'] = $user->getDeletedAt() ? $user->getDeletedAt()->format('Y-m-d H:i:s') : null;
+                $userArray['roles'] = $user->getRoles();
             }
 
             $data[] = $userArray;
         }
-
+        //Pagination metadata
         return [
             'data' => $data,
             'meta' => [
