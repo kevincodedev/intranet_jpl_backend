@@ -58,6 +58,8 @@ class AuthController extends AbstractController
         $user->setPassword($hashedPassword);
 
         $user->setRoles(['ROLE_USER']);
+        // Force password change on first login since it's an admin creation
+        $user->setMustChangePassword(true);
 
         // Validate user (checks constraints like UniqueEntity and Assert\Email)
         $errors = $validator->validate($user);
@@ -82,8 +84,24 @@ class AuthController extends AbstractController
 
     /**
      * @Route("/api/me", name="api_me", methods={"GET"})
+     * @OA\Get(
+     *     path="/api/me",
+     *     summary="Returns the profile of the currently authenticated user",
+     *     tags={"Autenticación"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="User profile",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="email", type="string"),
+     *             @OA\Property(property="name", type="string"),
+     *             @OA\Property(property="surname", type="string"),
+     *             @OA\Property(property="roles", type="array", @OA\Items(type="string")),
+     *             @OA\Property(property="mustChangePassword", type="boolean")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Not authenticated")
+     * )
      */
-    //Returns user info
     public function me(): JsonResponse
     {
         $user = $this->getUser();
@@ -97,6 +115,7 @@ class AuthController extends AbstractController
             'name' => $user->getName(),
             'surname' => $user->getSurname(),
             'roles' => $user->getRoles(),
+            'mustChangePassword' => $user instanceof \App\Entity\User ? $user->getMustChangePassword() : false,
         ]);
     }
 }

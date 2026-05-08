@@ -61,13 +61,19 @@ class UserVoter extends Voter
         if ($authenticatedUser->getId() === $targetUser->getId()) {
             return true;
         }
-        // If the user is a super admin, requires super admin auth to modify
-        if (in_array('ROLE_SUPER_ADMIN', $targetUser->getRoles())) {
-            return $this->security->isGranted('ROLE_SUPER_ADMIN');
+
+        // Super Admin can edit anyone
+        if ($this->security->isGranted('ROLE_SUPER_ADMIN')) {
+            return true;
         }
 
-        // Else admins can modify roles
-        return $this->security->isGranted('ROLE_ADMIN');
+        // Regular Admin can edit users, but NOT other Admins or Super Admins
+        if ($this->security->isGranted('ROLE_ADMIN')) {
+            $targetRoles = $targetUser->getRoles();
+            return !in_array('ROLE_ADMIN', $targetRoles) && !in_array('ROLE_SUPER_ADMIN', $targetRoles);
+        }
+
+        return false;
     }
 
     private function canEditRoles(User $targetUser, User $authenticatedUser): bool
@@ -87,9 +93,15 @@ class UserVoter extends Voter
             return false;
         }
 
-        // Admin can delete others unless the target is a SUPER_ADMIN
+        // Super Admin can delete anyone
+        if ($this->security->isGranted('ROLE_SUPER_ADMIN')) {
+            return true;
+        }
+
+        // Admin can delete users, but NOT other Admins or Super Admins
         if ($this->security->isGranted('ROLE_ADMIN')) {
-            return !in_array('ROLE_SUPER_ADMIN', $targetUser->getRoles());
+            $targetRoles = $targetUser->getRoles();
+            return !in_array('ROLE_ADMIN', $targetRoles) && !in_array('ROLE_SUPER_ADMIN', $targetRoles);
         }
 
         return false;

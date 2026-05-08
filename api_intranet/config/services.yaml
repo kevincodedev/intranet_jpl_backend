@@ -33,3 +33,7 @@ services:
     App\Controller\ResetPasswordController:
         arguments:
             $frontendUrl: '%app.frontend_url%'
+
+    App\EventListener\AuthenticationSuccessListener:
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_authentication_success, method: onAuthenticationSuccessResponse }

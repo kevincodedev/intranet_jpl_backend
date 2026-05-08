@@ -60,6 +60,11 @@ class User implements UserInterface
      */
     private $deletedAt;
 
+    /**
+     * @ORM\Column(type="boolean")
+     */
+    private $mustChangePassword = false;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -188,6 +193,17 @@ class User implements UserInterface
     public function isActive(): bool
     {
         return $this->deletedAt === null;
+    }
+
+    public function getMustChangePassword(): bool
+    {
+        return $this->mustChangePassword;
+    }
+
+    public function setMustChangePassword(bool $mustChangePassword): self
+    {
+        $this->mustChangePassword = $mustChangePassword;
+        return $this;
     }
 }
 
