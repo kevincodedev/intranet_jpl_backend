@@ -65,6 +65,7 @@ class UserController extends AbstractController
      *             @OA\Property(property="surname", type="string"),
      *             @OA\Property(property="roles", type="array", @OA\Items(type="string")),
      *             @OA\Property(property="isActive", type="boolean", description="Only for admins"),
+     *             @OA\Property(property="mustChangePassword", type="boolean", description="Only for admins"),
      *             @OA\Property(property="deletedAt", type="string", format="date-time", description="Only for admins")
      *         )
      *     ),
@@ -95,6 +96,7 @@ class UserController extends AbstractController
 
         if ($this->isGranted('ROLE_ADMIN')) {
             $userData['isActive'] = $user->isActive();
+            $userData['mustChangePassword'] = $user->getMustChangePassword();
             $userData['deletedAt'] = $user->getDeletedAt() ? $user->getDeletedAt()->format('Y-m-d H:i:s') : null;
         }
 
@@ -165,7 +167,8 @@ class UserController extends AbstractController
         }
 
         //updates DB with values
-        $dto->updateEntity($user, $encoder, $canChangeRoles);
+        $isSelfUpdate = $this->getUser() && $this->getUser()->getId() === $user->getId();
+        $dto->updateEntity($user, $encoder, $canChangeRoles, $isSelfUpdate);
         $em->flush();
 
         return $this->json(['message' => 'Usuario actualizado correctamente']);

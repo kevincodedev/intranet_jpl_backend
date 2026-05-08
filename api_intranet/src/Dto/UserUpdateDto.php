@@ -47,7 +47,7 @@ class UserUpdateDto
         return array_values(array_unique(array_merge(array_values($preserved), $newRoles)));
     }
 
-    public function updateEntity($user, $encoder, $canChangeRoles): void
+    public function updateEntity($user, $encoder, $canChangeRoles, bool $isSelfUpdate): void
     {
         if ($this->email) {
             $user->setEmail($this->email);
@@ -55,6 +55,9 @@ class UserUpdateDto
 
         if ($this->password) {
             $user->setPassword($encoder->encodePassword($user, $this->password));
+            // If it is a self-update, the requirement is fulfilled.
+            // If an admin is resetting it, the requirement is triggered.
+            $user->setMustChangePassword(!$isSelfUpdate);
         }
 
         if ($this->name) {
