@@ -57,7 +57,8 @@ class AuthController extends AbstractController
         $hashedPassword = $encoder->encodePassword($user, $data['password']);
         $user->setPassword($hashedPassword);
 
-        $user->setRoles(['ROLE_USER']);
+        // Password hashed and set. Role will remain NULL unless explicitly assigned 
+        // via the database-driven Role entity system.
 
         // Validate user (checks constraints like UniqueEntity and Assert\Email)
         $errors = $validator->validate($user);

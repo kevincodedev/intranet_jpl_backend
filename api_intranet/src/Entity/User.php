@@ -123,8 +123,6 @@ class User implements UserInterface
             }
         }
 
-        $roles[] = 'ROLE_USER';
-
         return array_unique($roles);
     }
 
@@ -136,6 +134,14 @@ class User implements UserInterface
     public function setPassword(string $password): self
     {
         $this->password = $password;
+        return $this;
+    }
+
+    /**
+     * Required by Symfony
+     */
+    public function setRoles(array $roles): self
+    {
         return $this;
     }
 

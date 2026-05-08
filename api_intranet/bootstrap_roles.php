@@ -1,6 +1,7 @@
 <?php
 // bootstrap_roles.php
-// Run this via: php bootstrap_roles.php YOUR_EMAIL@example.com
+// Run this via: php bootstrap_roles.php email [name] [surname] [password]
+// Example: php bootstrap_roles.php admin@intranet.com Super Admin admin
 
 use App\Entity\Role;
 use App\Entity\User;
@@ -15,7 +16,7 @@ $kernel = new \App\Kernel('dev', true);
 $kernel->boot();
 
 $container = $kernel->getContainer();
-$em = $container->get('doctrine.orm.entity_manager');
+$em = $container->get('doctrine')->getManager();
 
 $email = $argv[1] ?? null;
 
@@ -28,7 +29,7 @@ if (!$email) {
 $role = $em->getRepository(Role::class)->findOneBy(['name' => 'ROLE_SUPER_ADMIN']);
 if (!$role) {
     $role = new Role();
-    $role->setName('ROLE_SUPER_ADMIN');
+    $role->setTitle('Super Admin'); // This sets both title and name (ROLE_SUPER_ADMIN)
     $em->persist($role);
     echo "Created ROLE_SUPER_ADMIN\n";
 }
@@ -41,9 +42,12 @@ $perms = [
     'PRODUCT_EDIT',
     'PRODUCT_DELETE',
     // Users
-    'USER_LIST',
+    'USER_VIEW',
+    'USER_EDIT',
+    'USER_DELETE',
     'USER_VIEW_DELETED',
     'USER_MANAGE',
+    'USER_EDIT_ROLES',
     // System
     'ROLE_MANAGE'
 ];
@@ -55,8 +59,6 @@ foreach ($perms as $pName) {
         $p->setName($pName);
         $em->persist($p);
         echo "Created Permission: $pName\n";
-    } else {
-        $p = $em->getRepository(Permission::class)->findOneBy(['name' => $pName]);
     }
 
     // Assign permission to Super Admin
@@ -65,14 +67,36 @@ foreach ($perms as $pName) {
     }
 }
 
-// 3. Assign to your user
+// 3. Create or Update User
 $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
-if ($user) {
-    $user->setRole($role);
-    echo "Assigned ROLE_SUPER_ADMIN to user: $email\n";
+$isNew = false;
+
+if (!$user) {
+    $user = new User();
+    $user->setEmail($email);
+    $em->persist($user);
+    $isNew = true;
+    echo "Creating new user: $email\n";
 } else {
-    echo "User not found: $email\n";
+    echo "Updating existing user: $email\n";
 }
+
+// Update name and surname
+$user->setName($argv[2] ?? ($isNew ? 'Super' : $user->getName()));
+$user->setSurname($argv[3] ?? ($isNew ? 'Admin' : $user->getSurname()));
+$user->setDeletedAt(null); // Ensure user is active
+
+// Hash and set password
+$password = $argv[4] ?? ($isNew ? 'admin' : null);
+if ($password) {
+    $encoder = $container->get('security.password_encoder');
+    $hashedPassword = $encoder->encodePassword($user, $password);
+    $user->setPassword($hashedPassword);
+    echo "Password set/updated for $email\n";
+}
+
+$user->setRole($role);
+echo "Assigned ROLE_SUPER_ADMIN role.\n";
 
 $em->flush();
 echo "Done! Your database is now populated and your user is a Super Admin.\n";
