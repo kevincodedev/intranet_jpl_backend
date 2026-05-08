@@ -39,13 +39,19 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $this->_em->persist($user);
         $this->_em->flush();
     }
-    public function searchAndPaginate($term, $page = 1, $limit = 25, bool $hasAdminAccess = false)
+    public function searchAndPaginate($term, $page = 1, $limit = 25, bool $hasAdminAccess = false, ?string $role = null)
     {
         $qb = $this->createQueryBuilder('u');
 
         // Logic: Non-admins only see non-deleted users
         if (!$hasAdminAccess) {
             $qb->where('u.deletedAt IS NULL');
+        }
+
+        // Role Filter
+        if ($role !== null && $role !== '') {
+            $qb->andWhere('u.roles LIKE :role')
+                ->setParameter('role', '%"' . $role . '"%');
         }
 
         // Optional Search (Email, Name, Surname)
@@ -66,12 +72,13 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
 
         $data = [];
         foreach ($paginator as $user) {
+            $roles = $user->getRoles();
             $userArray = [
                 'id' => $user->getId(),
                 'email' => $user->getEmail(),
                 'name' => $user->getName(),
                 'surname' => $user->getSurname(),
-                'roles' => $user->getRoles(),
+                'role' => count($roles) > 0 ? $roles[0] : 'ROLE_USER',
             ];
 
             if ($hasAdminAccess) {

@@ -27,6 +27,7 @@ class UserController extends AbstractController
      * @OA\Parameter(name="search", in="query", description="Search String", @OA\Schema(type="string")),
      * @OA\Parameter(name="limit", in="query", description="Page limit (10, 25, 50, 100)", @OA\Schema(type="integer", default=25)),
      * @OA\Parameter(name="page", in="query", description="Page Number", @OA\Schema(type="integer", default=1)),
+     * @OA\Parameter(name="role", in="query", description="Filter by role name (e.g. ROLE_ADMIN)", @OA\Schema(type="string")),
      *     @OA\Response(response=200, description="List of users"),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
@@ -34,6 +35,7 @@ class UserController extends AbstractController
     public function index(Request $request, UserRepository $repository): JsonResponse
     {
         $search = $request->query->get('search', '');
+        $role = $request->query->get('role');
         $page = $request->query->getInt('page', 1);
         $limit = $request->query->getInt('limit', 25);
 
@@ -43,7 +45,7 @@ class UserController extends AbstractController
         }
         // If they ARE NOT an admin, we only want active products
         $hasAdminAccess = $this->isGranted('ROLE_ADMIN');
-        $result = $repository->searchAndPaginate($search, $page, $limit, $hasAdminAccess);
+        $result = $repository->searchAndPaginate($search, $page, $limit, $hasAdminAccess, $role);
 
         return $this->json($result);
     }
@@ -86,12 +88,13 @@ class UserController extends AbstractController
         }
 
 
+        $roles = $user->getRoles();
         $userData = [
             'id' => $user->getId(),
             'email' => $user->getEmail(),
             'name' => $user->getName(),
             'surname' => $user->getSurname(),
-            'roles' => $user->getRoles(),
+            'role' => count($roles) > 0 ? $roles[0] : 'ROLE_USER',
         ];
 
         if ($this->isGranted('ROLE_ADMIN')) {

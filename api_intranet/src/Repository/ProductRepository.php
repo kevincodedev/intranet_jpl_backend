@@ -15,13 +15,19 @@ class ProductRepository extends ServiceEntityRepository
     }
 
     //function handling search field and pagination
-    public function searchAndPaginate($term, $page = 1, $limit = 25, bool $onlyActive = true)
+    public function searchAndPaginate($term, $page = 1, $limit = 25, ?string $category = null, bool $onlyActive = true)
     {
         $qb = $this->createQueryBuilder('p');
 
         // Only filter by deletedAt if $onlyActive is true (non-admins)
         if ($onlyActive) {
             $qb->where('p.deletedAt IS NULL');
+        }
+
+        // Category Filter
+        if ($category !== null && $category !== '') {
+            $qb->andWhere('p.categoria = :category')
+                ->setParameter('category', $category);
         }
 
         // Incremental Search
