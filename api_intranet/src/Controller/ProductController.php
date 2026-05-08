@@ -41,9 +41,9 @@ class ProductController extends AbstractController
             $limit = 25;
         }
 
-        // If they can see deleted products, we don't filter them out
-        $hasPermissionToSeeDeleted = $this->isGranted('PRODUCT_VIEW_DELETED');
-        $result = $repository->searchAndPaginate($search, $page, $limit, $category, $hasPermissionToSeeDeleted);
+        // If they ARE NOT an admin, we only want active products
+        $onlyActive = !$this->isGranted('ROLE_ADMIN');
+        $result = $repository->searchAndPaginate($search, $page, $limit, $category, $onlyActive);
 
         return $this->json($result);
     }
@@ -83,8 +83,8 @@ class ProductController extends AbstractController
             return $this->json(['error' => 'Producto no encontrado'], 404);
         }
 
-        // Hide deleted products from users without view_deleted permission
-        if (!$product->isActive() && !$this->isGranted('PRODUCT_VIEW_DELETED')) {
+        // Hide deleted products from non-admins
+        if (!$product->isActive() && !$this->isGranted('ROLE_ADMIN')) {
             return $this->json(['error' => 'Producto no encontrado'], 404);
         }
 
@@ -98,13 +98,12 @@ class ProductController extends AbstractController
             'caracteristicas' => $product->getCaracteristicas(),
             'color' => $product->getColor(),
             'serial' => $product->getSerial(),
-            'cantidad' => $product->getCantidad(),
             'condicion' => $product->getCondicion(),
             'locacion' => $product->getLocacion(),
             'deletedAt' => $product->getDeletedAt(),
         ];
 
-        if ($this->isGranted('PRODUCT_VIEW_DELETED')) {
+        if ($this->isGranted('ROLE_ADMIN')) {
             $productData['deletedAt'] = $product->getDeletedAt() ? $product->getDeletedAt()->format('Y-m-d H:i:s') : null;
         }
 
@@ -136,7 +135,6 @@ class ProductController extends AbstractController
     //Creates a new Product
     public function create(Request $request, EntityManagerInterface $em, ValidatorInterface $validator): JsonResponse
     {
-        $this->denyAccessUnlessGranted('PRODUCT_CREATE');
         $data = json_decode($request->getContent(), true) ?? [];
         $product = new Product();
 
@@ -151,6 +149,7 @@ class ProductController extends AbstractController
         $product->setSerial($data['serial'] ?? null);
         $product->setCondicion($data['condicion'] ?? '');
         $product->setLocacion($data['locacion'] ?? null);
+
 
         // El @Assert\Validates each field with the product entity
         $errors = $validator->validate($product);
@@ -190,7 +189,6 @@ class ProductController extends AbstractController
     //Updates a product
     public function update(int $id, Request $request, EntityManagerInterface $em, ProductRepository $repository, ValidatorInterface $validator): JsonResponse
     {
-        $this->denyAccessUnlessGranted('PRODUCT_EDIT');
         $product = $repository->find($id);
 
         //checks if a valid id was entered 
@@ -211,7 +209,6 @@ class ProductController extends AbstractController
         if (array_key_exists('serial', $data)) $product->setSerial($data['serial']);
         if (isset($data['locacion'])) $product->setLocacion($data['locacion']);
         if (isset($data['condicion'])) $product->setCondicion($data['condicion']);
-        if (isset($data['cantidad'])) $product->setCantidad($data['cantidad']);
 
         //El @Assert\Validates each field with the product entity
         $errors = $validator->validate($product);
@@ -236,7 +233,6 @@ class ProductController extends AbstractController
     //Deletes a product
     public function delete(int $id, EntityManagerInterface $em, ProductRepository $repository): JsonResponse
     {
-        $this->denyAccessUnlessGranted('PRODUCT_DELETE');
         $product = $repository->find($id);
 
         //checks if an id was entered or item was deleted
@@ -269,8 +265,8 @@ class ProductController extends AbstractController
             return $this->json(['error' => 'Producto no encontrado'], 404);
         }
 
-        // Restrict this action to users with delete/restore permission
-        $this->denyAccessUnlessGranted('PRODUCT_DELETE');
+        // Restrict this action to admins only
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         if ($product->isActive()) {
             $product->setDeletedAt(new \DateTime());
