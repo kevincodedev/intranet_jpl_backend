@@ -93,17 +93,6 @@ class Role
         return $this;
     }
 
-    public function removeUser(User $user): self
-    {
-        if ($this->users->removeElement($user)) {
-            if ($user->getRole() === $this) {
-                $user->setRole(null);
-            }
-        }
-
-        return $this;
-    }
-
     /**
      * @return Collection|Permission[]
      */
@@ -132,9 +121,18 @@ class Role
         return $this->title;
     }
 
+    //When a title for a role is set, automatize creating a sanitized name for DB, example: "Human Resources" -> HUMAN_RESOURCES
     public function setTitle(string $title): self
     {
         $this->title = $title;
+
+        // Automatically generates name: Uppercase, spaces to underscores, and prefix with ROLE_
+        // setName() already handles the ROLE_ prefix 
+        $sanitized = str_replace(' ', '_', trim($title));
+        $sanitized = preg_replace('/[^A-Za-z0-9_]/', '', $sanitized);
+
+        $this->setName($sanitized);
+
         return $this;
     }
 

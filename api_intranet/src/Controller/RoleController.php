@@ -46,6 +46,7 @@ class RoleController extends AbstractController
             $data[] = [
                 'id' => $role->getId(),
                 'name' => $role->getName(),
+                'title' => $role->getTitle(),
                 'permissions' => $permissions
             ];
         }
@@ -62,7 +63,8 @@ class RoleController extends AbstractController
      *     @OA\RequestBody(
      *         @OA\JsonContent(
      *             type="object",
-     *             @OA\Property(property="name", type="string", example="SECRETARIA")
+     *             @OA\Property(property="title", type="string", example="Secretaria"),
+     *             @OA\Property(property="permissions", type="array", @OA\Items(type="string"), description="Array of permission names")
      *         )
      *     ),
      *     @OA\Response(response=201, description="Role created")
@@ -73,12 +75,29 @@ class RoleController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_MANAGE');
 
         $data = json_decode($request->getContent(), true);
-        if (empty($data['name'])) {
-            return $this->json(['error' => 'El nombre es obligatorio'], 400);
+        if (empty($data['title'])) {
+            return $this->json(['error' => 'El título es obligatorio'], 400);
+        }
+
+        // Prevent creating a Super Admin via API
+        if (strtoupper(trim($data['title'])) === 'SUPER ADMIN') {
+            return $this->json(['error' => 'El rol Super Admin solo puede ser creado mediante scripts del sistema.'], 403);
         }
 
         $role = new Role();
-        $role->setName($data['name']);
+        $role->setTitle($data['title']);
+
+        // Optional: Sync Permissions on creation
+        if (isset($data['permissions']) && is_array($data['permissions'])) {
+            $permRepo = $em->getRepository(Permission::class);
+            foreach ($data['permissions'] as $permName) {
+                $permission = $permRepo->findOneBy(['name' => $permName]);
+                if (!$permission) {
+                    return $this->json(['error' => sprintf('El permiso "%s" no existe.', $permName)], 400);
+                }
+                $role->addPermission($permission);
+            }
+        }
 
         $em->persist($role);
         $em->flush();
@@ -95,7 +114,7 @@ class RoleController extends AbstractController
      *     @OA\RequestBody(
      *         @OA\JsonContent(
      *             type="object",
-     *             @OA\Property(property="name", type="string"),
+     *             @OA\Property(property="title", type="string", example="Secretaria Ejecutiva"),
      *             @OA\Property(property="permissions", type="array", @OA\Items(type="string"), description="Array of permission names")
      *         )
      *     ),
@@ -113,12 +132,16 @@ class RoleController extends AbstractController
 
         $data = json_decode($request->getContent(), true);
 
-        // Update Name
-        if (!empty($data['name'])) {
-            $role->setName($data['name']);
+        // Update Title (which auto-updates Name)
+        if (!empty($data['title'])) {
+            // Prevent renaming a role to Super Admin via API
+            if (strtoupper(trim($data['title'])) === 'SUPER ADMIN') {
+                return $this->json(['error' => 'No se puede asignar el título de Super Admin a través de la API.'], 403);
+            }
+            $role->setTitle($data['title']);
         }
 
-        // Sync Permissions
+        // Sync Permissions via removing all then readding
         if (isset($data['permissions']) && is_array($data['permissions'])) {
             // Clear current permissions
             foreach ($role->getPermissions() as $p) {
@@ -129,9 +152,7 @@ class RoleController extends AbstractController
             foreach ($data['permissions'] as $permName) {
                 $permission = $permRepo->findOneBy(['name' => $permName]);
                 if (!$permission) {
-                    $permission = new Permission();
-                    $permission->setName($permName);
-                    $em->persist($permission);
+                    return $this->json(['error' => sprintf('El permiso "%s" no existe.', $permName)], 400);
                 }
                 $role->addPermission($permission);
             }
@@ -158,6 +179,11 @@ class RoleController extends AbstractController
         $role = $repository->find($id);
         if (!$role) {
             return $this->json(['error' => 'Rol no encontrado'], 404);
+        }
+
+        // PROTECTION: Prevent deleting the Super Admin role
+        if ($role->getName() === 'ROLE_SUPER_ADMIN') {
+            return $this->json(['error' => 'El rol Super Admin es un rol del sistema y no puede ser eliminado.'], 403);
         }
 
         // Check if users are using this role

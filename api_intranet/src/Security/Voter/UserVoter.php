@@ -38,11 +38,6 @@ class UserVoter extends Voter
         /** @var User $targetUser */
         $targetUser = $subject;
 
-        // SUPER_ADMIN can do anything
-        if ($this->security->isGranted('ROLE_SUPER_ADMIN')) {
-            return true;
-        }
-
         switch ($attribute) {
             case self::EDIT:
                 return $this->canEdit($targetUser, $user);

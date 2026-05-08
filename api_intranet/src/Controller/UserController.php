@@ -34,6 +34,8 @@ class UserController extends AbstractController
      */
     public function index(Request $request, UserRepository $repository): JsonResponse
     {
+        $this->denyAccessUnlessGranted('USER_VIEW');
+
         $search = $request->query->get('search', '');
         $role = $request->query->get('role');
         $page = $request->query->getInt('page', 1);
@@ -79,6 +81,11 @@ class UserController extends AbstractController
 
         if (!$user) {
             return $this->json(['error' => 'Usuario no encontrado'], 404);
+        }
+
+        // Authorization check: User can view themselves, or must have USER_VIEW permission
+        if ($user !== $this->getUser() && !$this->isGranted('USER_VIEW')) {
+            throw $this->createAccessDeniedException('No tienes permisos para ver otros usuarios.');
         }
 
         // Hide deleted users from users without view_deleted permission
