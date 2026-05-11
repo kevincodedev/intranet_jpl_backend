@@ -19,22 +19,31 @@ class ProductRepository extends ServiceEntityRepository
     {
         $qb = $this->createQueryBuilder('p');
 
-        // Only filter by deletedAt if $onlyActive is true (non-admins)
+        // 1. Activity Filter
         if ($onlyActive) {
-            $qb->where('p.deletedAt IS NULL');
+            $qb->andWhere('p.deletedAt IS NULL');
         }
 
-        // Category Filter
+        // 2. Category Filter 
         if ($category !== null && $category !== '') {
             $qb->andWhere('p.categoria = :category')
                 ->setParameter('category', $category);
         }
 
-        // Incremental Search
+        // 3. Incremental Search 
         if ($term !== null && $term !== '') {
-            // Use andWhere to notoverwrite the deletedAt filter above
-            $qb->andWhere('p.nombre LIKE :term OR p.color LIKE :term OR p.categoria LIKE :term OR p.marca LIKE :term OR p.modelo LIKE :term OR p.serial LIKE :term OR p.locacion LIKE :term OR p.caracteristicas LIKE :term')
-                ->setParameter('term', '%' . $term . '%');
+            $qb->andWhere(
+                $qb->expr()->orX(
+                    'p.nombre LIKE :term',
+                    'p.color LIKE :term',
+                    'p.categoria LIKE :term',
+                    'p.marca LIKE :term',
+                    'p.modelo LIKE :term',
+                    'p.serial LIKE :term',
+                    'p.locacion LIKE :term',
+                    'p.caracteristicas LIKE :term'
+                )
+            )->setParameter('term', '%' . $term . '%');
         }
 
         $qb->orderBy('p.id', 'DESC');
