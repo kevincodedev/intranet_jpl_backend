@@ -43,21 +43,26 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     {
         $qb = $this->createQueryBuilder('u');
 
-        // Logic: Non-admins only see non-deleted users
+        // Non-admins only see non-deleted users
         if (!$hasAdminAccess) {
-            $qb->where('u.deletedAt IS NULL');
+            $qb->andWhere('u.deletedAt IS NULL');
         }
 
-        // Role Filter
+        //  Primary role (category) filter:
         if ($role !== null && $role !== '') {
             $qb->andWhere('u.roles LIKE :role')
                 ->setParameter('role', '%"' . $role . '"%');
         }
 
-        // Optional Search (Email, Name, Surname)
+        // Secondary search term filter
         if ($term) {
-            $qb->andWhere('u.email LIKE :term OR u.name LIKE :term OR u.surname LIKE :term')
-                ->setParameter('term', '%' . $term . '%');
+            $qb->andWhere(
+                $qb->expr()->orX(
+                    'u.email LIKE :term',
+                    'u.name LIKE :term',
+                    'u.surname LIKE :term'
+                )
+            )->setParameter('term', '%' . $term . '%');
         }
 
         $qb->orderBy('u.id', 'DESC');
@@ -68,7 +73,7 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
 
         $paginator = new Paginator($qb);
         $totalItems = count($paginator);
-        $totalPages = ceil($totalItems / $limit);
+        $totalPages = ceil((int)$totalItems / $limit);
 
         $data = [];
         foreach ($paginator as $user) {
@@ -93,9 +98,9 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             'data' => $data,
             'meta' => [
                 'total_items' => $totalItems,
-                'total_pages' => $totalPages,
-                'current_page' => (int) $page,
-                'limit' => (int) $limit
+                'total_pages' => (int)$totalPages,
+                'current_page' => (int)$page,
+                'limit' => (int)$limit
             ]
         ];
     }
