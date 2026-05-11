@@ -84,10 +84,10 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
                 'name' => $user->getName(),
                 'surname' => $user->getSurname(),
                 'role' => count($roles) > 0 ? $roles[0] : 'ROLE_USER',
+                'isActive' => $user->isActive(),
             ];
 
             if ($hasAdminAccess) {
-                $userArray['isActive'] = $user->isActive();
                 $userArray['deletedAt'] = $user->getDeletedAt() ? $user->getDeletedAt()->format('Y-m-d H:i:s') : null;
             }
 

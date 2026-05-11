@@ -66,7 +66,7 @@ class UserController extends AbstractController
      *             @OA\Property(property="name", type="string"),
      *             @OA\Property(property="surname", type="string"),
      *             @OA\Property(property="roles", type="array", @OA\Items(type="string")),
-     *             @OA\Property(property="isActive", type="boolean", description="Only for admins"),
+     *             @OA\Property(property="isActive", type="boolean"),
      *             @OA\Property(property="mustChangePassword", type="boolean", description="Only for admins"),
      *             @OA\Property(property="deletedAt", type="string", format="date-time", description="Only for admins")
      *         )
@@ -95,10 +95,10 @@ class UserController extends AbstractController
             'name' => $user->getName(),
             'surname' => $user->getSurname(),
             'role' => count($roles) > 0 ? $roles[0] : 'ROLE_USER',
+            'isActive' => $user->isActive(),
         ];
 
         if ($this->isGranted('ROLE_ADMIN')) {
-            $userData['isActive'] = $user->isActive();
             $userData['mustChangePassword'] = $user->getMustChangePassword();
             $userData['deletedAt'] = $user->getDeletedAt() ? $user->getDeletedAt()->format('Y-m-d H:i:s') : null;
         }
