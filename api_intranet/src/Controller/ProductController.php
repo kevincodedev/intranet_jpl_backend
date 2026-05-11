@@ -135,6 +135,7 @@ class ProductController extends AbstractController
     //Creates a new Product
     public function create(Request $request, EntityManagerInterface $em, ValidatorInterface $validator): JsonResponse
     {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
         $data = json_decode($request->getContent(), true) ?? [];
         $product = new Product();
 
@@ -189,6 +190,7 @@ class ProductController extends AbstractController
     //Updates a product
     public function update(int $id, Request $request, EntityManagerInterface $em, ProductRepository $repository, ValidatorInterface $validator): JsonResponse
     {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
         $product = $repository->find($id);
 
         //checks if a valid id was entered 
@@ -233,6 +235,7 @@ class ProductController extends AbstractController
     //Deletes a product
     public function delete(int $id, EntityManagerInterface $em, ProductRepository $repository): JsonResponse
     {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
         $product = $repository->find($id);
 
         //checks if an id was entered or item was deleted

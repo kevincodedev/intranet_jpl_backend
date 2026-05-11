@@ -38,8 +38,9 @@ class UserVoter extends Voter
         /** @var User $targetUser */
         $targetUser = $subject;
 
-        // SUPER_ADMIN can do anything
-        if ($this->security->isGranted('ROLE_SUPER_ADMIN')) {
+        // SUPER_ADMIN can do anything. Checking the roles array directly from the user object 
+        // prevents infinite loops or false evaluations within the Security component context.
+        if (in_array('ROLE_SUPER_ADMIN', $user->getRoles())) {
             return true;
         }
 
@@ -62,8 +63,8 @@ class UserVoter extends Voter
             return true;
         }
 
-        // Super Admin can edit anyone
-        if ($this->security->isGranted('ROLE_SUPER_ADMIN')) {
+        // Super Admin can edit anyone (already checked at the top of the voter)
+        if (in_array('ROLE_SUPER_ADMIN', $authenticatedUser->getRoles())) {
             return true;
         }
 
@@ -93,8 +94,8 @@ class UserVoter extends Voter
             return false;
         }
 
-        // Super Admin can delete anyone
-        if ($this->security->isGranted('ROLE_SUPER_ADMIN')) {
+        // Super Admin can delete anyone (already checked at the top of the voter)
+        if (in_array('ROLE_SUPER_ADMIN', $authenticatedUser->getRoles())) {
             return true;
         }
 
