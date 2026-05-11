@@ -36,6 +36,7 @@ class AuthController extends AbstractController
      */
     public function register(Request $request, UserPasswordEncoderInterface $encoder, EntityManagerInterface $em, ValidatorInterface $validator, UserRepository $userRepository): JsonResponse
     {
+        error_log("[Security Debug] Entering AuthController::register");
         $data = json_decode($request->getContent(), true);
 
         if (!$data || !is_array($data)) {

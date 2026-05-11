@@ -131,6 +131,7 @@ class UserController extends AbstractController
      */
     public function update(int $id, Request $request, UserRepository $repository, EntityManagerInterface $em, UserPasswordEncoderInterface $encoder, ValidatorInterface $validator): JsonResponse
     {
+        error_log("[Security Debug] Entering UserController::update for user ID: " . $id);
         $user = $repository->find($id);
         // If the user doesn't exist, throw error
         if (!$user) {
