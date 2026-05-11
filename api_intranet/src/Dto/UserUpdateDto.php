@@ -33,42 +33,56 @@ class UserUpdateDto
      */
     private function resolveRoles(array $currentRoles, array $newRoles): array
     {
+        $hierarchy = ['ROLE_USER' => 1, 'ROLE_ADMIN' => 2, 'ROLE_SUPER_ADMIN' => 3];
         $incomingTiered = array_intersect($newRoles, self::TIERED_ROLES);
 
-        if (empty($incomingTiered)) {
-            // No tiered role in the new set — just merge with existing
-            return array_values(array_unique(array_merge($currentRoles, $newRoles)));
+        $highestTier = null;
+        $highestRank = 0;
+
+        foreach ($incomingTiered as $role) {
+            if (isset($hierarchy[$role]) && $hierarchy[$role] > $highestRank) {
+                $highestRank = $hierarchy[$role];
+                $highestTier = $role;
+            }
         }
 
-        // Strip all existing tiered roles, keep non-tiered ones (e.g. ROLE_EDITOR)
+        // Keep non-tiered roles from current roles (e.g., ROLE_EDITOR)
         $preserved = array_filter($currentRoles, fn($r) => !in_array($r, self::TIERED_ROLES));
 
-        // Merge preserved roles with the incoming roles (which already contain the new tiered role)
-        return array_values(array_unique(array_merge(array_values($preserved), $newRoles)));
+        // Keep non-tiered roles from new roles
+        $newNonTiered = array_filter($newRoles, fn($r) => !in_array($r, self::TIERED_ROLES));
+
+        // Combine preserved and new non-tiered roles
+        $finalRoles = array_unique(array_merge(array_values($preserved), array_values($newNonTiered)));
+
+        // Only append the single highest tier role to prevent role accumulation
+        if ($highestTier) {
+            $finalRoles[] = $highestTier;
+        }
+
+        return array_values($finalRoles);
     }
 
-    public function updateEntity($user, $encoder, $canChangeRoles, bool $isSelfUpdate): void
+    public function updateEntity($user, $encoder, $canChangeRoles, bool $isSelfUpdate, array $providedFields = []): void
     {
-        if ($this->email) {
+        if (in_array('email', $providedFields) && $this->email !== null) {
             $user->setEmail($this->email);
         }
 
-        if ($this->password) {
+        if (in_array('password', $providedFields) && !empty($this->password)) {
             $user->setPassword($encoder->encodePassword($user, $this->password));
-            // If it is a self-update, the requirement is fulfilled.
-            // If an admin is resetting it, the requirement is triggered.
             $user->setMustChangePassword(!$isSelfUpdate);
         }
 
-        if ($this->name) {
+        if (in_array('name', $providedFields)) {
             $user->setName($this->name);
         }
 
-        if ($this->surname) {
+        if (in_array('surname', $providedFields)) {
             $user->setSurname($this->surname);
         }
 
-        if ($this->roles && $canChangeRoles) {
+        if (in_array('roles', $providedFields) && $this->roles !== null && $canChangeRoles) {
             $resolved = $this->resolveRoles($user->getRoles(), $this->roles);
             $user->setRoles($resolved);
         }
