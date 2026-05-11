@@ -68,6 +68,8 @@ security:
                 target: http://localhost:3000/login
 
     access_control:
+        - { path: ^/api, roles: IS_AUTHENTICATED_ANONYMOUSLY, methods: [OPTIONS] }
+        
         - { path: ^/api/login, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/api/token/refresh, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/api/register, roles: ROLE_ADMIN }
