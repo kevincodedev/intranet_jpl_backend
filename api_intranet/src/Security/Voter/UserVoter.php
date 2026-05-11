@@ -30,79 +30,106 @@ class UserVoter extends Voter
     protected function voteOnAttribute(string $attribute, $subject, TokenInterface $token): bool
     {
         $user = $token->getUser();
-        // if the user is not logged in, deny access
+
+        // Must be authenticated
         if (!$user instanceof UserInterface) {
+            error_log("[UserVoter] Denied: user is not authenticated.");
+            return false;
+        }
+
+        // Token user must be our concrete App\Entity\User to call getId() / getRoles()
+        if (!$user instanceof User) {
+            error_log("[UserVoter] Denied: token user is not App\\Entity\\User.");
             return false;
         }
 
         /** @var User $targetUser */
         $targetUser = $subject;
 
-        // SUPER_ADMIN can do anything. Checking the roles array directly from the user object 
-        // prevents infinite loops or false evaluations within the Security component context.
+        // Super Admin gets unconditional access for all voter attributes
         if (in_array('ROLE_SUPER_ADMIN', $user->getRoles())) {
+            error_log("[UserVoter] Granted: {$user->getEmail()} is ROLE_SUPER_ADMIN.");
             return true;
         }
 
+        $result = false;
         switch ($attribute) {
             case self::EDIT:
-                return $this->canEdit($targetUser, $user);
+                $result = $this->canEdit($targetUser, $user);
+                break;
             case self::DELETE:
-                return $this->canDelete($targetUser, $user);
+                $result = $this->canDelete($targetUser, $user);
+                break;
             case self::EDIT_ROLES:
-                return $this->canEditRoles($targetUser, $user);
+                $result = $this->canEditRoles($targetUser, $user);
+                break;
         }
 
-        return false;
+        if (!$result) {
+            error_log("[UserVoter] Denied: '{$attribute}' on target ID={$targetUser->getId()} by user ID={$user->getId()} roles=" . implode(',', $user->getRoles()));
+        }
+
+        return $result;
     }
 
+    /**
+     * ROLE_USER can only edit themselves.
+     * ROLE_ADMIN can edit any non-admin user.
+     * ROLE_SUPER_ADMIN is handled above (unconditional grant).
+     */
     private function canEdit(User $targetUser, User $authenticatedUser): bool
     {
-        // User can edit themselves
+        // A user can always edit their own profile
         if ($authenticatedUser->getId() === $targetUser->getId()) {
             return true;
         }
 
-        // Super Admin can edit anyone (already checked at the top of the voter)
-        if (in_array('ROLE_SUPER_ADMIN', $authenticatedUser->getRoles())) {
-            return true;
-        }
-
-        // Regular Admin can edit users, but NOT other Admins or Super Admins
-        if ($this->security->isGranted('ROLE_ADMIN')) {
+        // Admin can edit regular users but NOT other admins or super admins
+        $authRoles = $authenticatedUser->getRoles();
+        if (in_array('ROLE_ADMIN', $authRoles)) {
             $targetRoles = $targetUser->getRoles();
-            return !in_array('ROLE_ADMIN', $targetRoles) && !in_array('ROLE_SUPER_ADMIN', $targetRoles);
+            return !in_array('ROLE_ADMIN', $targetRoles)
+                && !in_array('ROLE_SUPER_ADMIN', $targetRoles);
         }
 
         return false;
     }
 
+    /**
+     * Only admins can edit roles.
+     * Admins cannot promote to / edit a Super Admin's roles.
+     * ROLE_SUPER_ADMIN is handled above (unconditional grant).
+     */
     private function canEditRoles(User $targetUser, User $authenticatedUser): bool
     {
-        // Only ADMIN or above can edit roles and they can't edit roles of a SUPER_ADMIN
-        if ($this->security->isGranted('ROLE_ADMIN')) {
+        $authRoles = $authenticatedUser->getRoles();
+        if (in_array('ROLE_ADMIN', $authRoles)) {
+            // Admin cannot edit roles of another Admin or Super Admin
             return !in_array('ROLE_SUPER_ADMIN', $targetUser->getRoles());
         }
 
         return false;
     }
 
+    /**
+     * You cannot delete yourself.
+     * ROLE_ADMIN can delete regular users only.
+     * ROLE_SUPER_ADMIN is handled above (unconditional grant).
+     */
     private function canDelete(User $targetUser, User $authenticatedUser): bool
     {
         // Cannot delete yourself
         if ($authenticatedUser->getId() === $targetUser->getId()) {
+            error_log("[UserVoter] Denied: user tried to delete themselves.");
             return false;
         }
 
-        // Super Admin can delete anyone (already checked at the top of the voter)
-        if (in_array('ROLE_SUPER_ADMIN', $authenticatedUser->getRoles())) {
-            return true;
-        }
-
-        // Admin can delete users, but NOT other Admins or Super Admins
-        if ($this->security->isGranted('ROLE_ADMIN')) {
+        // Admin can delete regular users but NOT other admins or super admins
+        $authRoles = $authenticatedUser->getRoles();
+        if (in_array('ROLE_ADMIN', $authRoles)) {
             $targetRoles = $targetUser->getRoles();
-            return !in_array('ROLE_ADMIN', $targetRoles) && !in_array('ROLE_SUPER_ADMIN', $targetRoles);
+            return !in_array('ROLE_ADMIN', $targetRoles)
+                && !in_array('ROLE_SUPER_ADMIN', $targetRoles);
         }
 
         return false;
