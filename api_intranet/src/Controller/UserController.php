@@ -139,8 +139,14 @@ class UserController extends AbstractController
 
         // Checks if the user is able to edit the target user, if not blocks access
         $this->denyAccessUnlessGranted('USER_EDIT', $user);
-        // If allowed, turns the JSON into PHP
-        $data = json_decode($request->getContent(), true);
+        $content = $request->getContent();
+        $data = json_decode($content, true);
+
+        if ($content && $data === null) {
+            return $this->json(['error' => 'Formato JSON inválido'], 400);
+        }
+
+        $data = $data ?: [];
 
         // Maps array into DTO
         $dto = new \App\Dto\UserUpdateDto();
@@ -149,6 +155,9 @@ class UserController extends AbstractController
         $dto->surname = $data['surname'] ?? null;
         $dto->roles = $data['roles'] ?? null;
         $dto->password = $data['password'] ?? null;
+
+        // Track which fields were actually provided in the JSON body
+        $providedFields = array_keys($data);
 
         // Validates data
         $errors = $validator->validate($dto);
@@ -170,8 +179,17 @@ class UserController extends AbstractController
         }
 
         //updates DB with values
-        $isSelfUpdate = $this->getUser() && $this->getUser()->getId() === $user->getId();
-        $dto->updateEntity($user, $encoder, $canChangeRoles, $isSelfUpdate);
+        $authenticatedUser = $this->getUser();
+        $isSelfUpdate = $authenticatedUser instanceof \App\Entity\User && $authenticatedUser->getId() === $user->getId();
+
+        // Prevent Super Admins from demoting themselves and locking the database
+        if ($isSelfUpdate && $dto->roles !== null && in_array('ROLE_SUPER_ADMIN', $user->getRoles()) && !in_array('ROLE_SUPER_ADMIN', $dto->roles)) {
+            return $this->json([
+                'error' => 'Por seguridad, no puedes remover tus propios permisos de Super Administrador.'
+            ], 403);
+        }
+
+        $dto->updateEntity($user, $encoder, $canChangeRoles, $isSelfUpdate, $providedFields);
         $em->flush();
 
         return $this->json(['message' => 'Usuario actualizado correctamente']);

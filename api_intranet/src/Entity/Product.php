@@ -68,7 +68,7 @@ class Product
     private $color;
 
     /**
-     * @ORM\Column(type="string", length=150, nullable=true, unique=true)
+     * @ORM\Column(type="string", length=150, nullable=true)
      * @Assert\Length(max=150)
      */
     private $serial;

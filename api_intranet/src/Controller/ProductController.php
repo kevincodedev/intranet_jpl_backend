@@ -135,6 +135,7 @@ class ProductController extends AbstractController
     //Creates a new Product
     public function create(Request $request, EntityManagerInterface $em, ValidatorInterface $validator): JsonResponse
     {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
         $data = json_decode($request->getContent(), true) ?? [];
         $product = new Product();
 
@@ -189,6 +190,7 @@ class ProductController extends AbstractController
     //Updates a product
     public function update(int $id, Request $request, EntityManagerInterface $em, ProductRepository $repository, ValidatorInterface $validator): JsonResponse
     {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
         $product = $repository->find($id);
 
         //checks if a valid id was entered 
@@ -196,19 +198,25 @@ class ProductController extends AbstractController
             return $this->json(['error' => 'Producto no encontrado'], 404);
         }
 
-        $data = json_decode($request->getContent(), true) ?? [];
+        $content = $request->getContent();
+        $data = json_decode($content, true);
 
+        if ($content && $data === null) {
+            return $this->json(['error' => 'Formato JSON inválido'], 400);
+        }
 
-        //sets fields to new values
-        if (isset($data['nombre'])) $product->setNombre($data['nombre']);
-        if (isset($data['categoria'])) $product->setCategoria($data['categoria']);
-        if (isset($data['marca'])) $product->setMarca($data['marca']);
-        if (isset($data['modelo'])) $product->setModelo($data['modelo']);
-        if (isset($data['caracteristicas'])) $product->setCaracteristicas($data['caracteristicas']);
-        if (isset($data['color'])) $product->setColor($data['color']);
+        $data = $data ?: [];
+
+        // sets fields to new values if they are present in the request
+        if (array_key_exists('nombre', $data)) $product->setNombre($data['nombre']);
+        if (array_key_exists('categoria', $data)) $product->setCategoria($data['categoria']);
+        if (array_key_exists('marca', $data)) $product->setMarca($data['marca']);
+        if (array_key_exists('modelo', $data)) $product->setModelo($data['modelo']);
+        if (array_key_exists('caracteristicas', $data)) $product->setCaracteristicas($data['caracteristicas']);
+        if (array_key_exists('color', $data)) $product->setColor($data['color']);
         if (array_key_exists('serial', $data)) $product->setSerial($data['serial']);
-        if (isset($data['locacion'])) $product->setLocacion($data['locacion']);
-        if (isset($data['condicion'])) $product->setCondicion($data['condicion']);
+        if (array_key_exists('locacion', $data)) $product->setLocacion($data['locacion']);
+        if (array_key_exists('condicion', $data)) $product->setCondicion($data['condicion']);
 
         //El @Assert\Validates each field with the product entity
         $errors = $validator->validate($product);
@@ -233,6 +241,7 @@ class ProductController extends AbstractController
     //Deletes a product
     public function delete(int $id, EntityManagerInterface $em, ProductRepository $repository): JsonResponse
     {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
         $product = $repository->find($id);
 
         //checks if an id was entered or item was deleted
