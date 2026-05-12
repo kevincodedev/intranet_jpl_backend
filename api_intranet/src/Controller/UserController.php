@@ -218,6 +218,11 @@ class UserController extends AbstractController
         // Authorization check using Voter
         $this->denyAccessUnlessGranted('USER_DELETE', $user);
 
+        // Prevent self-deletion
+        if ($this->getUser() && $this->getUser()->getId() === $user->getId()) {
+            return $this->json(['error' => 'No puedes eliminarte a ti mismo por seguridad.'], 403);
+        }
+
         // Soft delete
         $user->setDeletedAt(new \DateTime());
         $em->flush();
@@ -245,6 +250,11 @@ class UserController extends AbstractController
         }
 
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        // Prevent self-deactivation
+        if ($this->getUser() && $this->getUser()->getId() === $user->getId()) {
+            return $this->json(['error' => 'No puedes cambiar tu propio estado de actividad por seguridad.'], 403);
+        }
 
         if ($user->isActive()) {
             $user->setDeletedAt(new \DateTime());
