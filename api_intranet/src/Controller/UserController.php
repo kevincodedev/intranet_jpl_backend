@@ -223,8 +223,12 @@ class UserController extends AbstractController
             return $this->json(['error' => 'No puedes eliminarte a ti mismo por seguridad.'], 403);
         }
 
-        // Soft delete
-        $user->setDeletedAt(new \DateTime());
+        // Soft delete and append .deleted.timestamp to free up the email
+        if ($user->isActive()) {
+            $timestamp = time();
+            $user->setEmail($user->getEmail() . '.deleted.' . $timestamp);
+            $user->setDeletedAt(new \DateTime());
+        }
         $em->flush();
 
         return $this->json(['message' => 'Usuario desactivado correctamente (borrado lógico)']);
@@ -257,8 +261,22 @@ class UserController extends AbstractController
         }
 
         if ($user->isActive()) {
+            // Deactivating: append .deleted.timestamp to email
+            $timestamp = time();
+            $user->setEmail($user->getEmail() . '.deleted.' . $timestamp);
             $user->setDeletedAt(new \DateTime());
         } else {
+            // Activating: check if original email is free
+            $originalEmail = preg_replace('/\.deleted\.\d+$/', '', $user->getEmail());
+
+            $existingUser = $repository->findOneBy(['email' => $originalEmail]);
+            if ($existingUser && $existingUser->getId() !== $user->getId()) {
+                return $this->json([
+                    'error' => 'No se puede reactivar el usuario. Ya existe otra cuenta usando el correo: ' . $originalEmail
+                ], 400);
+            }
+
+            $user->setEmail($originalEmail);
             $user->setDeletedAt(null);
         }
 
