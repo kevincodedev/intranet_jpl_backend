@@ -211,7 +211,7 @@ class Product
     {
         return $this->cantidad;
     }
-    public function setCantidad(int $cantidad): self
+    public function setCantidad(?int $cantidad): self
     {
         $this->cantidad = $cantidad;
         return $this;
