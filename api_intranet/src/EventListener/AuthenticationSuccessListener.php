@@ -6,8 +6,17 @@ use Lexik\Bundle\JWTAuthenticationBundle\Event\AuthenticationSuccessEvent;
 use Symfony\Component\Security\Core\User\UserInterface;
 use App\Entity\User;
 
+use App\Service\AuditLogger;
+
 class AuthenticationSuccessListener
 {
+    private $auditLogger;
+
+    public function __construct(AuditLogger $auditLogger)
+    {
+        $this->auditLogger = $auditLogger;
+    }
+
     /**
      * @param AuthenticationSuccessEvent $event
      */
@@ -19,6 +28,10 @@ class AuthenticationSuccessListener
         if (!$user instanceof User) {
             return;
         }
+
+        $this->auditLogger->log('LOGIN', 'App\Entity\User', (string)$user->getId(), [
+            'email' => $user->getEmail()
+        ]);
 
         // Add custom data to the response
         $data['user'] = [

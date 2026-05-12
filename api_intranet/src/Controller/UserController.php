@@ -34,6 +34,10 @@ class UserController extends AbstractController
      */
     public function index(Request $request, UserRepository $repository): JsonResponse
     {
+        if (!$this->isGranted('ROLE_ADMIN')) {
+            return $this->json(['error' => 'No tienes permisos para listar a los usuarios.'], 403);
+        }
+
         $search = $request->query->get('search', '');
         $role = $request->query->get('role');
         $page = $request->query->getInt('page', 1);

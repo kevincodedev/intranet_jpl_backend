@@ -37,3 +37,11 @@ services:
     App\EventListener\AuthenticationSuccessListener:
         tags:
             - { name: kernel.event_listener, event: lexik_jwt_authentication.on_authentication_success, method: onAuthenticationSuccessResponse }
+
+    App\EventListener\AuthenticationFailureListener:
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_authentication_failure, method: onAuthenticationFailureResponse }
+
+    App\EventListener\DatabaseActivitySubscriber:
+        tags:
+            - { name: doctrine.event_subscriber, connection: default }
