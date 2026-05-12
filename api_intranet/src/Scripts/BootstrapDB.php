@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Command;
-
+require_once __DIR__ . '/../../vendor/autoload.php';
 use App\Entity\ChatMessage;
 use App\Entity\KanbanTask;
 use App\Entity\Product;

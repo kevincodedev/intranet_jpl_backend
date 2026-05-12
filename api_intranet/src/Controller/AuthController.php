@@ -96,7 +96,8 @@ class AuthController extends AbstractController
      *             @OA\Property(property="name", type="string"),
      *             @OA\Property(property="surname", type="string"),
      *             @OA\Property(property="roles", type="array", @OA\Items(type="string")),
-     *             @OA\Property(property="mustChangePassword", type="boolean")
+     *             @OA\Property(property="mustChangePassword", type="boolean"),
+     *             @OA\Property(property="isActive", type="boolean")
      *         )
      *     ),
      *     @OA\Response(response=401, description="Not authenticated")
@@ -116,6 +117,7 @@ class AuthController extends AbstractController
             'surname' => $user->getSurname(),
             'roles' => $user->getRoles(),
             'mustChangePassword' => $user instanceof \App\Entity\User ? $user->getMustChangePassword() : false,
+            'isActive' => $user instanceof \App\Entity\User ? $user->isActive() : false,
         ]);
     }
 }
