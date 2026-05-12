@@ -102,10 +102,17 @@ class UserVoter extends Voter
      */
     private function canEditRoles(User $targetUser, User $authenticatedUser): bool
     {
+        // A user cannot edit their own roles (prevents self-demotion)
+        if ($authenticatedUser->getId() === $targetUser->getId()) {
+            return false;
+        }
+
         $authRoles = $authenticatedUser->getRoles();
         if (in_array('ROLE_ADMIN', $authRoles)) {
-            // Admin cannot edit roles of another Admin or Super Admin
-            return !in_array('ROLE_SUPER_ADMIN', $targetUser->getRoles());
+            // Admin can only edit roles of regular users (not other admins or super admins)
+            $targetRoles = $targetUser->getRoles();
+            return !in_array('ROLE_ADMIN', $targetRoles)
+                && !in_array('ROLE_SUPER_ADMIN', $targetRoles);
         }
 
         return false;

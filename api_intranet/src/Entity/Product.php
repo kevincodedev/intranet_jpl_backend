@@ -90,6 +90,12 @@ class Product
     private $locacion;
 
     /**
+     * @ORM\Column(type="integer", nullable=true)
+     * @Assert\PositiveOrZero(message="La cantidad no puede ser negativa")
+     */
+    private $cantidad;
+
+    /**
      * @ORM\Column(type="datetime", nullable=true)
      */
     private $deletedAt;
@@ -198,6 +204,16 @@ class Product
     public function setDeletedAt(?\DateTimeInterface $deletedAt): self
     {
         $this->deletedAt = $deletedAt;
+        return $this;
+    }
+
+    public function getCantidad(): ?int
+    {
+        return $this->cantidad;
+    }
+    public function setCantidad(int $cantidad): self
+    {
+        $this->cantidad = $cantidad;
         return $this;
     }
 

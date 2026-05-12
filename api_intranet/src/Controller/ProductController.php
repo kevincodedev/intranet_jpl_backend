@@ -42,7 +42,7 @@ class ProductController extends AbstractController
         }
 
         // If they ARE NOT an admin, we only want active products
-        $onlyActive = !$this->isGranted('ROLE_ADMIN');
+        $onlyActive = !$this->isGranted('ROLE_LOGISTICS');
         $result = $repository->searchAndPaginate($search, $page, $limit, $category, $onlyActive);
 
         return $this->json($result);
@@ -69,6 +69,7 @@ class ProductController extends AbstractController
      *             @OA\Property(property="serial", type="string", nullable=true, example=null),
      *             @OA\Property(property="condicion", type="string", example="Nuevo"),
      *             @OA\Property(property="locacion", type="string", example="Almacén Principal"),
+     *             @OA\Property(property="cantidad", type="integer", example=10),
      *             @OA\Property(property="deletedAt", type="string", nullable=true, example=null)
      *         )
      *     ),
@@ -84,7 +85,7 @@ class ProductController extends AbstractController
         }
 
         // Hide deleted products from non-admins
-        if (!$product->isActive() && !$this->isGranted('ROLE_ADMIN')) {
+        if (!$product->isActive() && !$this->isGranted('ROLE_LOGISTICS')) {
             return $this->json(['error' => 'Producto no encontrado'], 404);
         }
 
@@ -100,10 +101,11 @@ class ProductController extends AbstractController
             'serial' => $product->getSerial(),
             'condicion' => $product->getCondicion(),
             'locacion' => $product->getLocacion(),
+            'cantidad' => $product->getCantidad(),
             'deletedAt' => $product->getDeletedAt(),
         ];
 
-        if ($this->isGranted('ROLE_ADMIN')) {
+        if ($this->isGranted('ROLE_LOGISTICS')) {
             $productData['deletedAt'] = $product->getDeletedAt() ? $product->getDeletedAt()->format('Y-m-d H:i:s') : null;
         }
 
@@ -126,7 +128,8 @@ class ProductController extends AbstractController
      * @OA\Property(property="color", type="string", example="Negro"),
      * @OA\Property(property="serial", type="string", nullable=true, example=null),
      * @OA\Property(property="condicion", type="string", example="Nuevo"),
-     * @OA\Property(property="locacion", type="string", example="Almacén Principal")
+     * @OA\Property(property="locacion", type="string", example="Almacén Principal"),
+     * @OA\Property(property="cantidad", type="integer", example=10)
      * )
      * ),
      * @OA\Response(response=201, description="Product Created")
@@ -135,7 +138,9 @@ class ProductController extends AbstractController
     //Creates a new Product
     public function create(Request $request, EntityManagerInterface $em, ValidatorInterface $validator): JsonResponse
     {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        if (!$this->isGranted('ROLE_LOGISTICS')) {
+            return $this->json(['error' => 'No tienes permisos para crear productos.'], 403);
+        }
         $data = json_decode($request->getContent(), true) ?? [];
         $product = new Product();
 
@@ -150,6 +155,7 @@ class ProductController extends AbstractController
         $product->setSerial($data['serial'] ?? null);
         $product->setCondicion($data['condicion'] ?? '');
         $product->setLocacion($data['locacion'] ?? null);
+        $product->setCantidad($data['cantidad'] ?? null);
 
 
         // El @Assert\Validates each field with the product entity
@@ -181,6 +187,7 @@ class ProductController extends AbstractController
      *             @OA\Property(property="serial", type="string", nullable=true),
      *             @OA\Property(property="condicion", type="string"),
      *             @OA\Property(property="locacion", type="string"),
+     *             @OA\Property(property="cantidad", type="integer"),
      *             @OA\Property(property="deletedAt", type="string", nullable=true, example=null)
      *         )
      *     ),
@@ -190,7 +197,9 @@ class ProductController extends AbstractController
     //Updates a product
     public function update(int $id, Request $request, EntityManagerInterface $em, ProductRepository $repository, ValidatorInterface $validator): JsonResponse
     {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        if (!$this->isGranted('ROLE_LOGISTICS')) {
+            return $this->json(['error' => 'No tienes permisos para editar este producto.'], 403);
+        }
         $product = $repository->find($id);
 
         //checks if a valid id was entered 
@@ -217,6 +226,7 @@ class ProductController extends AbstractController
         if (array_key_exists('serial', $data)) $product->setSerial($data['serial']);
         if (array_key_exists('locacion', $data)) $product->setLocacion($data['locacion']);
         if (array_key_exists('condicion', $data)) $product->setCondicion($data['condicion']);
+        if (array_key_exists('cantidad', $data)) $product->setCantidad($data['cantidad']);
 
         //El @Assert\Validates each field with the product entity
         $errors = $validator->validate($product);
@@ -241,7 +251,9 @@ class ProductController extends AbstractController
     //Deletes a product
     public function delete(int $id, EntityManagerInterface $em, ProductRepository $repository): JsonResponse
     {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        if (!$this->isGranted('ROLE_LOGISTICS')) {
+            return $this->json(['error' => 'No tienes permisos para eliminar este producto.'], 403);
+        }
         $product = $repository->find($id);
 
         //checks if an id was entered or item was deleted
@@ -275,7 +287,9 @@ class ProductController extends AbstractController
         }
 
         // Restrict this action to admins only
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        if (!$this->isGranted('ROLE_LOGISTICS')) {
+            return $this->json(['error' => 'No tienes permisos para cambiar el estado de este producto.'], 403);
+        }
 
         if ($product->isActive()) {
             $product->setDeletedAt(new \DateTime());

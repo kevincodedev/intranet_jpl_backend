@@ -11,7 +11,7 @@ class UserUpdateDto
      * The ranked roles that are mutually exclusive.
      * Only one of these should be stored on a user at a time.
      */
-    private const TIERED_ROLES = ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_SUPER_ADMIN'];
+    private const TIERED_ROLES = ['ROLE_USER', 'ROLE_LOGISTICS', 'ROLE_ADMIN', 'ROLE_SUPER_ADMIN'];
 
     /** @Assert\Email */
     public $email;
@@ -33,7 +33,7 @@ class UserUpdateDto
      */
     private function resolveRoles(array $currentRoles, array $newRoles): array
     {
-        $hierarchy = ['ROLE_USER' => 1, 'ROLE_ADMIN' => 2, 'ROLE_SUPER_ADMIN' => 3];
+        $hierarchy = ['ROLE_USER' => 1, 'ROLE_LOGISTICS' => 2, 'ROLE_ADMIN' => 3, 'ROLE_SUPER_ADMIN' => 4];
         $incomingTiered = array_intersect($newRoles, self::TIERED_ROLES);
 
         $highestTier = null;

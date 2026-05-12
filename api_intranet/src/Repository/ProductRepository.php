@@ -70,6 +70,7 @@ class ProductRepository extends ServiceEntityRepository
                 'serial' => $product->getSerial(),
                 'condicion' => $product->getCondicion(),
                 'locacion' => $product->getLocacion(),
+                'cantidad' => $product->getCantidad(),
             ];
 
             // If admin, include deletedat info

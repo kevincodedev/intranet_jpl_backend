@@ -1,7 +1,9 @@
 <?php
 
 namespace App\Scripts;
+
 require_once __DIR__ . '/../../vendor/autoload.php';
+
 use App\Entity\ChatMessage;
 use App\Entity\KanbanTask;
 use App\Entity\Product;
@@ -57,7 +59,7 @@ class SeedDatabaseCommand extends Command
                 'email'             => 'jlopez@intranet.com',
                 'name'              => 'Juan',
                 'surname'           => 'López',
-                'password'          => 'password123',
+                'password'          => '123',
                 'roles'             => ['ROLE_ADMIN'],
                 'mustChangePassword' => true,
             ],
@@ -65,16 +67,16 @@ class SeedDatabaseCommand extends Command
                 'email'             => 'mgarcia@intranet.com',
                 'name'              => 'María',
                 'surname'           => 'García',
-                'password'          => 'password123',
+                'password'          => '123',
                 'roles'             => ['ROLE_USER'],
                 'mustChangePassword' => true,
             ],
             [
-                'email'             => 'cperez@intranet.com',
-                'name'              => 'Carlos',
-                'surname'           => 'Pérez',
-                'password'          => 'password123',
-                'roles'             => ['ROLE_USER'],
+                'email'             => 'logistica@intranet.com',
+                'name'              => 'Logística',
+                'surname'           => 'Inventario',
+                'password'          => '123',
+                'roles'             => ['ROLE_LOGISTICS'],
                 'mustChangePassword' => true,
             ],
         ];
@@ -84,13 +86,8 @@ class SeedDatabaseCommand extends Command
 
         foreach ($usersData as $userData) {
             $existing = $userRepo->findOneBy(['email' => $userData['email']]);
-            if ($existing) {
-                $io->text("  ⚠️  Skipped (already exists): <comment>{$userData['email']}</comment>");
-                $createdUsers[$userData['email']] = $existing;
-                continue;
-            }
+            $user = $existing ?: new User();
 
-            $user = new User();
             $user->setEmail($userData['email']);
             $user->setName($userData['name']);
             $user->setSurname($userData['surname']);
@@ -100,7 +97,12 @@ class SeedDatabaseCommand extends Command
 
             $this->em->persist($user);
             $createdUsers[$userData['email']] = $user;
-            $io->text("  ✅ Created: <info>{$userData['email']}</info> [" . implode(', ', $userData['roles']) . "]");
+
+            if ($existing) {
+                $io->text("  Updated: <info>{$userData['email']}</info>");
+            } else {
+                $io->text("  Created: <info>{$userData['email']}</info> [" . implode(', ', $userData['roles']) . "]");
+            }
         }
 
         $this->em->flush();
@@ -122,6 +124,7 @@ class SeedDatabaseCommand extends Command
                 'serial'          => 'DXPS15-001',
                 'condicion'       => 'Bueno',
                 'locacion'        => 'Oficina A',
+                'cantidad'        => 5,
             ],
             [
                 'nombre'          => 'Monitor LG UltraWide',
@@ -133,6 +136,7 @@ class SeedDatabaseCommand extends Command
                 'serial'          => 'LGUW34-002',
                 'condicion'       => 'Excelente',
                 'locacion'        => 'Sala de Reuniones',
+                'cantidad'        => 10,
             ],
             [
                 'nombre'          => 'Teclado Mecánico Logitech MX',
@@ -144,6 +148,7 @@ class SeedDatabaseCommand extends Command
                 'serial'          => 'LMXKS-003',
                 'condicion'       => 'Nuevo',
                 'locacion'        => 'Almacén',
+                'cantidad'        => 20,
             ],
         ];
 
@@ -151,12 +156,8 @@ class SeedDatabaseCommand extends Command
 
         foreach ($productsData as $pd) {
             $existing = $productRepo->findOneBy(['serial' => $pd['serial']]);
-            if ($existing) {
-                $io->text("  ⚠️  Skipped (serial exists): <comment>{$pd['serial']}</comment>");
-                continue;
-            }
+            $product = $existing ?: new Product();
 
-            $product = new Product();
             $product->setNombre($pd['nombre']);
             $product->setCategoria($pd['categoria']);
             $product->setMarca($pd['marca']);
@@ -166,9 +167,15 @@ class SeedDatabaseCommand extends Command
             $product->setSerial($pd['serial']);
             $product->setCondicion($pd['condicion']);
             $product->setLocacion($pd['locacion']);
+            $product->setCantidad($pd['cantidad']);
 
             $this->em->persist($product);
-            $io->text("  ✅ Created: <info>{$pd['nombre']}</info> (serial: {$pd['serial']})");
+
+            if ($existing) {
+                $io->text("  🔄 Updated: <info>{$pd['nombre']}</info> (serial: {$pd['serial']})");
+            } else {
+                $io->text("  ✅ Created: <info>{$pd['nombre']}</info> (serial: {$pd['serial']})");
+            }
         }
 
         $this->em->flush();
@@ -211,7 +218,7 @@ class SeedDatabaseCommand extends Command
         foreach ($tasksData as $td) {
             $existing = $taskRepo->findOneBy(['title' => $td['title']]);
             if ($existing) {
-                $io->text("  ⚠️  Skipped (title exists): <comment>{$td['title']}</comment>");
+                $io->text("  Skipped (title exists): <comment>{$td['title']}</comment>");
                 continue;
             }
 
@@ -224,7 +231,7 @@ class SeedDatabaseCommand extends Command
             $task->setOwner($superAdmin);
 
             $this->em->persist($task);
-            $io->text("  ✅ Created: <info>{$td['title']}</info> [{$td['status']}]");
+            $io->text("  Created: <info>{$td['title']}</info> [{$td['status']}]");
         }
 
         $this->em->flush();
@@ -258,7 +265,7 @@ class SeedDatabaseCommand extends Command
             $msg->setSender($superAdmin);
 
             $this->em->persist($msg);
-            $io->text("  ✅ Created message in topic: <info>{$md['topic']}</info>");
+            $io->text("  Created message in topic: <info>{$md['topic']}</info>");
         }
 
         $this->em->flush();
@@ -268,9 +275,10 @@ class SeedDatabaseCommand extends Command
             'Database seeded successfully!',
             '',
             '  Super Admin  →  admin@intranet.com  /  admin',
-            '  Admin        →  jlopez@intranet.com  /  password123',
-            '  User         →  mgarcia@intranet.com  /  password123',
-            '  User         →  cperez@intranet.com   /  password123',
+            '  Admin        →  jlopez@intranet.com  /  123',
+            '  Logistics    →  logistica@intranet.com / 123',
+            '  User         →  mgarcia@intranet.com  /  123',
+            '  User         →  cperez@intranet.com   /  123',
         ]);
 
         return Command::SUCCESS;

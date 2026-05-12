@@ -165,18 +165,23 @@ class UserController extends AbstractController
             return $this->json(['error' => (string) $errors], 400);
         }
 
-        // Checks if user has permission to edit an user role, if not, disallows
+        // Checks if user has permission to edit an user role
         $canEditRoles = $this->isGranted('USER_EDIT_ROLES', $user);
-        $isTryingToGrantSuper = $dto->roles && in_array('ROLE_SUPER_ADMIN', $dto->roles);
-        // Calculate if a role change to super user is allowed
-        $canChangeRoles = $canEditRoles && (!$isTryingToGrantSuper || $this->isGranted('ROLE_SUPER_ADMIN'));
+        if ($dto->roles !== null && !$canEditRoles) {
+            return $this->json([
+                'error' => 'No tienes permisos para modificar los roles de este usuario.'
+            ], 403);
+        }
 
-        // Checks if user has permission to change roles of another
-        if ($dto->roles !== null && !$canChangeRoles) {
+        // Check specifically for Super Admin promotion escalation
+        $isTryingToGrantSuper = $dto->roles && in_array('ROLE_SUPER_ADMIN', $dto->roles);
+        if ($isTryingToGrantSuper && !$this->isGranted('ROLE_SUPER_ADMIN')) {
             return $this->json([
                 'error' => 'No tienes permisos para modificar los roles de este usuario o asignar el rango solicitado.'
             ], 403);
         }
+
+        $canChangeRoles = $canEditRoles;
 
         //updates DB with values
         $authenticatedUser = $this->getUser();
