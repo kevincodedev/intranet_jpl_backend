@@ -86,13 +86,8 @@ class SeedDatabaseCommand extends Command
 
         foreach ($usersData as $userData) {
             $existing = $userRepo->findOneBy(['email' => $userData['email']]);
-            if ($existing) {
-                $io->text("  ⚠️  Skipped (already exists): <comment>{$userData['email']}</comment>");
-                $createdUsers[$userData['email']] = $existing;
-                continue;
-            }
+            $user = $existing ?: new User();
 
-            $user = new User();
             $user->setEmail($userData['email']);
             $user->setName($userData['name']);
             $user->setSurname($userData['surname']);
@@ -102,7 +97,12 @@ class SeedDatabaseCommand extends Command
 
             $this->em->persist($user);
             $createdUsers[$userData['email']] = $user;
-            $io->text("  ✅ Created: <info>{$userData['email']}</info> [" . implode(', ', $userData['roles']) . "]");
+
+            if ($existing) {
+                $io->text("  Updated: <info>{$userData['email']}</info>");
+            } else {
+                $io->text("  Created: <info>{$userData['email']}</info> [" . implode(', ', $userData['roles']) . "]");
+            }
         }
 
         $this->em->flush();
@@ -124,6 +124,7 @@ class SeedDatabaseCommand extends Command
                 'serial'          => 'DXPS15-001',
                 'condicion'       => 'Bueno',
                 'locacion'        => 'Oficina A',
+                'cantidad'        => 5,
             ],
             [
                 'nombre'          => 'Monitor LG UltraWide',
@@ -135,6 +136,7 @@ class SeedDatabaseCommand extends Command
                 'serial'          => 'LGUW34-002',
                 'condicion'       => 'Excelente',
                 'locacion'        => 'Sala de Reuniones',
+                'cantidad'        => 10,
             ],
             [
                 'nombre'          => 'Teclado Mecánico Logitech MX',
@@ -146,6 +148,7 @@ class SeedDatabaseCommand extends Command
                 'serial'          => 'LMXKS-003',
                 'condicion'       => 'Nuevo',
                 'locacion'        => 'Almacén',
+                'cantidad'        => 20,
             ],
         ];
 
@@ -153,12 +156,8 @@ class SeedDatabaseCommand extends Command
 
         foreach ($productsData as $pd) {
             $existing = $productRepo->findOneBy(['serial' => $pd['serial']]);
-            if ($existing) {
-                $io->text("  ⚠️  Skipped (serial exists): <comment>{$pd['serial']}</comment>");
-                continue;
-            }
+            $product = $existing ?: new Product();
 
-            $product = new Product();
             $product->setNombre($pd['nombre']);
             $product->setCategoria($pd['categoria']);
             $product->setMarca($pd['marca']);
@@ -168,9 +167,15 @@ class SeedDatabaseCommand extends Command
             $product->setSerial($pd['serial']);
             $product->setCondicion($pd['condicion']);
             $product->setLocacion($pd['locacion']);
+            $product->setCantidad($pd['cantidad']);
 
             $this->em->persist($product);
-            $io->text("  ✅ Created: <info>{$pd['nombre']}</info> (serial: {$pd['serial']})");
+
+            if ($existing) {
+                $io->text("  🔄 Updated: <info>{$pd['nombre']}</info> (serial: {$pd['serial']})");
+            } else {
+                $io->text("  ✅ Created: <info>{$pd['nombre']}</info> (serial: {$pd['serial']})");
+            }
         }
 
         $this->em->flush();
