@@ -1,7 +1,9 @@
 <?php
 
 namespace App\Scripts;
+
 require_once __DIR__ . '/../../vendor/autoload.php';
+
 use App\Entity\ChatMessage;
 use App\Entity\KanbanTask;
 use App\Entity\Product;
@@ -57,7 +59,7 @@ class SeedDatabaseCommand extends Command
                 'email'             => 'jlopez@intranet.com',
                 'name'              => 'Juan',
                 'surname'           => 'López',
-                'password'          => 'password123',
+                'password'          => '123',
                 'roles'             => ['ROLE_ADMIN'],
                 'mustChangePassword' => true,
             ],
@@ -65,16 +67,16 @@ class SeedDatabaseCommand extends Command
                 'email'             => 'mgarcia@intranet.com',
                 'name'              => 'María',
                 'surname'           => 'García',
-                'password'          => 'password123',
+                'password'          => '123',
                 'roles'             => ['ROLE_USER'],
                 'mustChangePassword' => true,
             ],
             [
-                'email'             => 'cperez@intranet.com',
-                'name'              => 'Carlos',
-                'surname'           => 'Pérez',
-                'password'          => 'password123',
-                'roles'             => ['ROLE_USER'],
+                'email'             => 'logistica@intranet.com',
+                'name'              => 'Logística',
+                'surname'           => 'Inventario',
+                'password'          => '123',
+                'roles'             => ['ROLE_LOGISTICS'],
                 'mustChangePassword' => true,
             ],
         ];
@@ -211,7 +213,7 @@ class SeedDatabaseCommand extends Command
         foreach ($tasksData as $td) {
             $existing = $taskRepo->findOneBy(['title' => $td['title']]);
             if ($existing) {
-                $io->text("  ⚠️  Skipped (title exists): <comment>{$td['title']}</comment>");
+                $io->text("  Skipped (title exists): <comment>{$td['title']}</comment>");
                 continue;
             }
 
@@ -224,7 +226,7 @@ class SeedDatabaseCommand extends Command
             $task->setOwner($superAdmin);
 
             $this->em->persist($task);
-            $io->text("  ✅ Created: <info>{$td['title']}</info> [{$td['status']}]");
+            $io->text("  Created: <info>{$td['title']}</info> [{$td['status']}]");
         }
 
         $this->em->flush();
@@ -258,7 +260,7 @@ class SeedDatabaseCommand extends Command
             $msg->setSender($superAdmin);
 
             $this->em->persist($msg);
-            $io->text("  ✅ Created message in topic: <info>{$md['topic']}</info>");
+            $io->text("  Created message in topic: <info>{$md['topic']}</info>");
         }
 
         $this->em->flush();
@@ -268,9 +270,10 @@ class SeedDatabaseCommand extends Command
             'Database seeded successfully!',
             '',
             '  Super Admin  →  admin@intranet.com  /  admin',
-            '  Admin        →  jlopez@intranet.com  /  password123',
-            '  User         →  mgarcia@intranet.com  /  password123',
-            '  User         →  cperez@intranet.com   /  password123',
+            '  Admin        →  jlopez@intranet.com  /  123',
+            '  Logistics    →  logistica@intranet.com / 123',
+            '  User         →  mgarcia@intranet.com  /  123',
+            '  User         →  cperez@intranet.com   /  123',
         ]);
 
         return Command::SUCCESS;

@@ -42,7 +42,7 @@ class ProductController extends AbstractController
         }
 
         // If they ARE NOT an admin, we only want active products
-        $onlyActive = !$this->isGranted('ROLE_ADMIN');
+        $onlyActive = !$this->isGranted('ROLE_LOGISTICS');
         $result = $repository->searchAndPaginate($search, $page, $limit, $category, $onlyActive);
 
         return $this->json($result);
@@ -84,7 +84,7 @@ class ProductController extends AbstractController
         }
 
         // Hide deleted products from non-admins
-        if (!$product->isActive() && !$this->isGranted('ROLE_ADMIN')) {
+        if (!$product->isActive() && !$this->isGranted('ROLE_LOGISTICS')) {
             return $this->json(['error' => 'Producto no encontrado'], 404);
         }
 
@@ -103,7 +103,7 @@ class ProductController extends AbstractController
             'deletedAt' => $product->getDeletedAt(),
         ];
 
-        if ($this->isGranted('ROLE_ADMIN')) {
+        if ($this->isGranted('ROLE_LOGISTICS')) {
             $productData['deletedAt'] = $product->getDeletedAt() ? $product->getDeletedAt()->format('Y-m-d H:i:s') : null;
         }
 
@@ -135,7 +135,9 @@ class ProductController extends AbstractController
     //Creates a new Product
     public function create(Request $request, EntityManagerInterface $em, ValidatorInterface $validator): JsonResponse
     {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        if (!$this->isGranted('ROLE_LOGISTICS')) {
+            return $this->json(['error' => 'No tienes permisos para crear productos.'], 403);
+        }
         $data = json_decode($request->getContent(), true) ?? [];
         $product = new Product();
 
@@ -190,7 +192,9 @@ class ProductController extends AbstractController
     //Updates a product
     public function update(int $id, Request $request, EntityManagerInterface $em, ProductRepository $repository, ValidatorInterface $validator): JsonResponse
     {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        if (!$this->isGranted('ROLE_LOGISTICS')) {
+            return $this->json(['error' => 'No tienes permisos para editar este producto.'], 403);
+        }
         $product = $repository->find($id);
 
         //checks if a valid id was entered 
@@ -241,7 +245,9 @@ class ProductController extends AbstractController
     //Deletes a product
     public function delete(int $id, EntityManagerInterface $em, ProductRepository $repository): JsonResponse
     {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        if (!$this->isGranted('ROLE_LOGISTICS')) {
+            return $this->json(['error' => 'No tienes permisos para eliminar este producto.'], 403);
+        }
         $product = $repository->find($id);
 
         //checks if an id was entered or item was deleted
@@ -275,7 +281,9 @@ class ProductController extends AbstractController
         }
 
         // Restrict this action to admins only
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        if (!$this->isGranted('ROLE_LOGISTICS')) {
+            return $this->json(['error' => 'No tienes permisos para cambiar el estado de este producto.'], 403);
+        }
 
         if ($product->isActive()) {
             $product->setDeletedAt(new \DateTime());
