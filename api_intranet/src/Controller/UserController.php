@@ -218,8 +218,17 @@ class UserController extends AbstractController
         // Authorization check using Voter
         $this->denyAccessUnlessGranted('USER_DELETE', $user);
 
-        // Soft delete
-        $user->setDeletedAt(new \DateTime());
+        // Prevent self-deletion
+        if ($this->getUser() && $this->getUser()->getId() === $user->getId()) {
+            return $this->json(['error' => 'No puedes eliminarte a ti mismo por seguridad.'], 403);
+        }
+
+        // Soft delete and append .deleted.timestamp to free up the email
+        if ($user->isActive()) {
+            $timestamp = time();
+            $user->setEmail($user->getEmail() . '.deleted.' . $timestamp);
+            $user->setDeletedAt(new \DateTime());
+        }
         $em->flush();
 
         return $this->json(['message' => 'Usuario desactivado correctamente (borrado lógico)']);
@@ -246,9 +255,28 @@ class UserController extends AbstractController
 
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
+        // Prevent self-deactivation
+        if ($this->getUser() && $this->getUser()->getId() === $user->getId()) {
+            return $this->json(['error' => 'No puedes cambiar tu propio estado de actividad por seguridad.'], 403);
+        }
+
         if ($user->isActive()) {
+            // Deactivating: append .deleted.timestamp to email
+            $timestamp = time();
+            $user->setEmail($user->getEmail() . '.deleted.' . $timestamp);
             $user->setDeletedAt(new \DateTime());
         } else {
+            // Activating: check if original email is free
+            $originalEmail = preg_replace('/\.deleted\.\d+$/', '', $user->getEmail());
+
+            $existingUser = $repository->findOneBy(['email' => $originalEmail]);
+            if ($existingUser && $existingUser->getId() !== $user->getId()) {
+                return $this->json([
+                    'error' => 'No se puede reactivar el usuario. Ya existe otra cuenta usando el correo: ' . $originalEmail
+                ], 400);
+            }
+
+            $user->setEmail($originalEmail);
             $user->setDeletedAt(null);
         }
 

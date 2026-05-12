@@ -52,7 +52,7 @@ class ChatController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
 
-        // Decode incoming JSON
+        // Decode and assigns incoming JSON
         $data = json_decode($request->getContent(), true);
 
         $category = $data['category'] ?? 'general';
