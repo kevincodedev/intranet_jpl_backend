@@ -21,7 +21,7 @@ class AuthController extends AbstractController
      * @OA\Post(
      * path="/api/register",
      * summary="Register a new user into the database",
-     * tags={"Autenticación"},
+     * tags={"Usuarios"},
      * @OA\RequestBody(
      * @OA\JsonContent(
      * type="object",
@@ -175,5 +175,52 @@ class AuthController extends AbstractController
         $refreshTokenManager->delete($refreshToken);
 
         return new JsonResponse(['message' => 'Sesión cerrada y token revocado']);
+    }
+
+    /**
+     * @Route("/api/check-password", name="api_check_password", methods={"POST"})
+     * @OA\Post(
+     *     path="/api/check-password",
+     *     summary="Checks if the provided password matches the current user's password",
+     *     tags={"Autenticación"},
+     *     @OA\RequestBody(
+     *         @OA\JsonContent(
+     *             @OA\Property(property="current_password", type="string", example="password123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Password match result",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="match", type="boolean")
+     *         )
+     *     ),
+     *     @OA\Response(response=400, description="Invalid request")
+     * )
+     */
+    public function checkPassword(Request $request, UserPasswordEncoderInterface $passwordEncoder): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse(['error' => 'Usuario no autenticado'], 401);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $currentPassword = $data['current_password'] ?? null;
+
+        if (empty($currentPassword)) {
+            return new JsonResponse(['error' => 'Debe proporcionar la contraseña actual'], 400);
+        }
+
+        $isValid = $passwordEncoder->isPasswordValid($user, $currentPassword);
+
+        if (!$isValid) {
+            return new JsonResponse(['error' => 'La contraseña actual no es la correcta'], 400);
+        }
+
+        return new JsonResponse([
+            'match' => true,
+            'message' => 'Contraseña verificada correctamente'
+        ]);
     }
 }
