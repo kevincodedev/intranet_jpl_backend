@@ -2,6 +2,7 @@
 
 namespace App\EventListener;
 
+use App\Service\AuditLogger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Event\TerminateEvent;
 
@@ -15,11 +16,13 @@ use Symfony\Component\HttpKernel\Event\TerminateEvent;
 class TokenCleanupListener
 {
     private EntityManagerInterface $em;
+    private AuditLogger $auditLogger;
     private string $lockFile;
 
-    public function __construct(EntityManagerInterface $em, string $kernelProjectDir)
+    public function __construct(EntityManagerInterface $em, AuditLogger $auditLogger, string $kernelProjectDir)
     {
         $this->em = $em;
+        $this->auditLogger = $auditLogger;
         // Store the lock file in var/ so it persists across requests but is ignored by git
         $this->lockFile = $kernelProjectDir . '/var/token_cleanup.lock';
     }
@@ -41,9 +44,15 @@ class TokenCleanupListener
         }
 
         // Delete all tokens that expired before now via direct DQL query
-        $this->em->createQuery('DELETE FROM App\Entity\RefreshToken r WHERE r.valid < :now')
-            ->setParameter('now', new \DateTime())
+        $deleted = $this->em->createQuery('DELETE FROM App\Entity\RefreshToken r WHERE r.valid < :now')
+            ->setParameter('now', $now)
             ->execute();
+
+        // Log the cleanup for audit trail
+        $this->auditLogger->log('TOKEN_CLEANUP', 'RefreshToken', null, [
+            'tokens_deleted' => $deleted,
+            'ran_at'         => $now->format('Y-m-d H:i:s'),
+        ]);
 
         // Write today's date as the lock so it won't run again until tomorrow
         file_put_contents($this->lockFile, $today);

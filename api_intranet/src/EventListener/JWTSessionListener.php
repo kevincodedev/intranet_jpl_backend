@@ -2,6 +2,7 @@
 
 namespace App\EventListener;
 
+use App\Entity\User;
 use App\Service\AuditLogger;
 use Lexik\Bundle\JWTAuthenticationBundle\Event\AuthenticationSuccessEvent;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -19,13 +20,14 @@ class JWTSessionListener
     {
         $user = $event->getUser();
 
-        if (!$user instanceof UserInterface) {
+        if (!$user instanceof User) {
             return;
         }
 
-        $this->auditLogger->log('LOGIN', 'User', $user->getUsername(), [
+        $this->auditLogger->log('LOGIN', User::class, (string) $user->getId(), [
             'method' => 'JWT',
-            'message' => 'Token issued successfully'
+            'message' => 'Token issued successfully',
+            'email' => $user->getEmail()
         ]);
     }
 }
