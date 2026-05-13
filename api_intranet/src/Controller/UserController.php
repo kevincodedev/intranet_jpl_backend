@@ -198,7 +198,11 @@ class UserController extends AbstractController
             ], 403);
         }
 
-        $dto->updateEntity($user, $encoder, $canChangeRoles, $isSelfUpdate, $providedFields);
+        try {
+            $dto->updateEntity($user, $encoder, $canChangeRoles, $isSelfUpdate, $providedFields);
+        } catch (\InvalidArgumentException $e) {
+            return $this->json(['error' => $e->getMessage()], 400);
+        }
         $em->flush();
 
         return $this->json(['message' => 'Usuario actualizado correctamente']);

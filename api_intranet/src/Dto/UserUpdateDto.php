@@ -70,6 +70,9 @@ class UserUpdateDto
         }
 
         if (in_array('password', $providedFields) && !empty($this->password)) {
+            if ($encoder->isPasswordValid($user, $this->password)) {
+                throw new \InvalidArgumentException('La nueva contraseña no puede ser igual a la anterior.');
+            }
             $user->setPassword($encoder->encodePassword($user, $this->password));
             $user->setMustChangePassword(!$isSelfUpdate);
         }
