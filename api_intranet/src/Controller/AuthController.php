@@ -12,6 +12,7 @@ use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use App\Repository\UserRepository;
 use OpenApi\Annotations as OA;
+use Gesdinet\JWTRefreshTokenBundle\Model\RefreshTokenManagerInterface;
 
 class AuthController extends AbstractController
 {
@@ -132,5 +133,47 @@ class AuthController extends AbstractController
             'mustChangePassword' => $user instanceof \App\Entity\User ? $user->getMustChangePassword() : false,
             'isActive' => $user instanceof \App\Entity\User ? $user->isActive() : false,
         ]);
+    }
+
+    /**
+     * @Route("/api/logout", name="api_logout", methods={"POST"})
+     * @OA\Post(
+     *     path="/api/logout",
+     *     summary="Revokes a refresh token to logout a user",
+     *     tags={"Autenticación"},
+     *     @OA\RequestBody(
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="refresh_token", type="string", example="abcdef1234567890...")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Token revoked successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Token revocado")
+     *         )
+     *     ),
+     *     @OA\Response(response=400, description="Invalid refresh token")
+     * )
+     */
+    public function logout(Request $request, RefreshTokenManagerInterface $refreshTokenManager): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $refreshTokenString = $data['refresh_token'] ?? null;
+
+        if (!$refreshTokenString) {
+            return new JsonResponse(['error' => 'No se proporcionó el refresh token'], 400);
+        }
+
+        $refreshToken = $refreshTokenManager->get($refreshTokenString);
+
+        if (!$refreshToken) {
+            return new JsonResponse(['error' => 'Refresh token inválido'], 400);
+        }
+
+        $refreshTokenManager->delete($refreshToken);
+
+        return new JsonResponse(['message' => 'Sesión cerrada y token revocado']);
     }
 }

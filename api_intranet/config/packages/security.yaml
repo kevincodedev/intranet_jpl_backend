@@ -66,9 +66,6 @@ security:
             lazy: true
             anonymous: true
             provider: app_user_provider
-            logout:
-                path: app_logout
-                target: http://localhost:3000/login
 
     access_control:
         - { path: ^/api, roles: IS_AUTHENTICATED_ANONYMOUSLY, methods: [OPTIONS] }
@@ -76,6 +73,7 @@ security:
         - { path: ^/api/login, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/api/token/refresh, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/api/register, roles: ROLE_ADMIN }
+        - { path: ^/api/logout, roles: IS_AUTHENTICATED_ANONYMOUSLY }
 
         - { path: ^/reset-password, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/api/users, roles: IS_AUTHENTICATED_FULLY }
