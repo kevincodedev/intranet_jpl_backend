@@ -53,3 +53,7 @@ services:
             $kernelProjectDir: '%kernel.project_dir%'
         tags:
             - { name: kernel.event_listener, event: kernel.terminate, method: onKernelTerminate }
+
+    App\EventListener\PasswordCheckAuditListener:
+        tags:
+            - { name: kernel.event_listener, event: kernel.response, method: onKernelResponse }
