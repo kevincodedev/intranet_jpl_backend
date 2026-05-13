@@ -27,11 +27,13 @@ class AuthController extends AbstractController
      * @OA\Property(property="email", type="string", example="admin@intranet.com"),
      * @OA\Property(property="name", type="string", example="Juan"),
      * @OA\Property(property="surname", type="string", example="Pérez"),
+     * @OA\Property(property="role", type="string", example="ROLE_USER"),
      * @OA\Property(property="password", type="string", example="mi_password_seguro")
      * )
      * ),
      * @OA\Response(response=201, description="User Creation successful"),
-     * @OA\Response(response=400, description="Validation error")
+     * @OA\Response(response=400, description="Validation error"),
+     * @OA\Response(response=403, description="Insufficient permissions")
      * )
      */
     public function register(Request $request, UserPasswordEncoderInterface $encoder, EntityManagerInterface $em, ValidatorInterface $validator, UserRepository $userRepository): JsonResponse
@@ -42,9 +44,20 @@ class AuthController extends AbstractController
             return new JsonResponse(['error' => 'Datos inválidos o JSON malformado'], 400);
         }
 
-        // Set Validation
         if (!isset($data['email']) || !isset($data['password']) || !isset($data['name']) || !isset($data['surname'])) {
             return new JsonResponse(['error' => 'Email, nombre, apellido y password son obligatorios'], 400);
+        }
+
+        // Only admins and above can register users
+        if (!$this->isGranted('ROLE_ADMIN')) {
+            return new JsonResponse(['error' => 'No tienes permisos para registrar usuarios.'], 403);
+        }
+
+        $role = $data['role'] ?? 'ROLE_USER';
+
+        // Only a Super Admin can create Admin or Super Admin accounts
+        if (in_array($role, ['ROLE_ADMIN', 'ROLE_SUPER_ADMIN']) && !$this->isGranted('ROLE_SUPER_ADMIN')) {
+            return new JsonResponse(['error' => 'No tienes permisos para crear una cuenta con ese rol.'], 403);
         }
 
         // Create user
@@ -52,12 +65,12 @@ class AuthController extends AbstractController
         $user->setEmail($data['email']);
         $user->setName($data['name']);
         $user->setSurname($data['surname']);
+        $user->setRoles([$role]);
 
         // Hash Password
         $hashedPassword = $encoder->encodePassword($user, $data['password']);
         $user->setPassword($hashedPassword);
 
-        $user->setRoles(['ROLE_USER']);
         // Force password change on first login since it's an admin creation
         $user->setMustChangePassword(true);
 
