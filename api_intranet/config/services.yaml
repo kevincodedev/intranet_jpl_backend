@@ -42,3 +42,9 @@ services:
     App\EventListener\DatabaseActivitySubscriber:
         tags:
             - { name: doctrine.event_subscriber, connection: default }
+
+    App\EventListener\TokenCleanupListener:
+        arguments:
+            $kernelProjectDir: '%kernel.project_dir%'
+        tags:
+            - { name: kernel.event_listener, event: kernel.terminate, method: onKernelTerminate }

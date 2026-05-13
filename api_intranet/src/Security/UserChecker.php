@@ -17,7 +17,7 @@ class UserChecker implements UserCheckerInterface
 
         if (!$user->isActive()) {
             // El mensaje se enviará al frontend cuando falle la autenticación
-            throw new CustomUserMessageAccountStatusException('Esta cuenta está inactiva y no puede iniciar sesión.');
+            throw new CustomUserMessageAccountStatusException('Esta cuenta ha sido desactivada.');
         }
     }
 
