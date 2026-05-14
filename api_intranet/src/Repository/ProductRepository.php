@@ -48,7 +48,7 @@ class ProductRepository extends ServiceEntityRepository
         }
 
         // Dynamic Sorting
-        $allowedFields = ['id', 'nombre', 'categoria', 'marca', 'modelo', 'color', 'serial', 'condicion', 'locacion', 'cantidad', 'empresa'];
+        $allowedFields = ['id', 'nombre', 'categoria', 'marca', 'modelo', 'color', 'serial', 'condicion', 'locacion', 'cantidad', 'empresa', 'registeredAt'];
         if (!in_array($sort, $allowedFields)) {
             $sort = 'id';
         }
@@ -79,6 +79,7 @@ class ProductRepository extends ServiceEntityRepository
                 'locacion' => $product->getLocacion(),
                 'cantidad' => $product->getCantidad(),
                 'empresa' => $product->getEmpresa(),
+                'registeredAt' => $product->getRegisteredAt() ? $product->getRegisteredAt()->format('Y-m-d') : null,
                 'isActive' => $product->isActive(),
             ];
 

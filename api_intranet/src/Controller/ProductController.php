@@ -76,6 +76,7 @@ class ProductController extends AbstractController
      *             @OA\Property(property="locacion", type="string", example="Almacén Principal"),
      *             @OA\Property(property="cantidad", type="integer", example=10),
      *             @OA\Property(property="empresa", type="string", example="JPL"),
+     *             @OA\Property(property="registeredAt", type="string", format="date", example="2026-02-15"),
      *             @OA\Property(property="isActive", type="boolean", example=true),
      *             @OA\Property(property="deletedAt", type="string", nullable=true, example=null)
      *         )
@@ -110,6 +111,7 @@ class ProductController extends AbstractController
             'locacion' => $product->getLocacion(),
             'cantidad' => $product->getCantidad(),
             'empresa' => $product->getEmpresa(),
+            'registeredAt' => $product->getRegisteredAt() ? $product->getRegisteredAt()->format('Y-m-d') : null,
             'isActive' => $product->isActive(),
         ];
 
@@ -172,6 +174,9 @@ class ProductController extends AbstractController
         $product->setLocacion($data['locacion'] ?? null);
         $product->setCantidad($data['cantidad'] ?? null);
         $product->setEmpresa($data['empresa'] ?? null);
+        if (isset($data['registeredAt'])) {
+            $product->setRegisteredAt(new \DateTime($data['registeredAt']));
+        }
 
 
         // El @Assert\Validates each field with the product entity
@@ -209,6 +214,7 @@ class ProductController extends AbstractController
      *             @OA\Property(property="locacion", type="string"),
      *             @OA\Property(property="cantidad", type="integer"),
      *             @OA\Property(property="empresa", type="string"),
+     *             @OA\Property(property="registeredAt", type="string", format="date"),
      *             @OA\Property(property="deletedAt", type="string", nullable=true, example=null)
      *         )
      *     ),
@@ -249,6 +255,9 @@ class ProductController extends AbstractController
         if (array_key_exists('condicion', $data)) $product->setCondicion($data['condicion']);
         if (array_key_exists('cantidad', $data)) $product->setCantidad($data['cantidad']);
         if (array_key_exists('empresa', $data)) $product->setEmpresa($data['empresa']);
+        if (array_key_exists('registeredAt', $data)) {
+            $product->setRegisteredAt($data['registeredAt'] ? new \DateTime($data['registeredAt']) : null);
+        }
 
         //El @Assert\Validates each field with the product entity
         $errors = $validator->validate($product);
