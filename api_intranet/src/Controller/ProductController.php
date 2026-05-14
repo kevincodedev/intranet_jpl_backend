@@ -42,7 +42,7 @@ class ProductController extends AbstractController
         }
 
         // If they ARE NOT an admin, we only want active products
-        $onlyActive = !$this->isGranted('ROLE_LOGISTICS');
+        $onlyActive = !$this->isGranted('ROLE_ADMIN');
         $result = $repository->searchAndPaginate($search, $page, $limit, $category, $onlyActive);
 
         return $this->json($result);
@@ -141,7 +141,14 @@ class ProductController extends AbstractController
         if (!$this->isGranted('ROLE_LOGISTICS')) {
             return $this->json(['error' => 'No tienes permisos para crear productos.'], 403);
         }
-        $data = json_decode($request->getContent(), true) ?? [];
+        $content = $request->getContent();
+        $data = json_decode($content, true);
+
+        if ($content && $data === null) {
+            return $this->json(['error' => 'Formato JSON inválido'], 400);
+        }
+
+        $data = $data ?: [];
         $product = new Product();
 
 
@@ -161,7 +168,11 @@ class ProductController extends AbstractController
         // El @Assert\Validates each field with the product entity
         $errors = $validator->validate($product);
         if (count($errors) > 0) {
-            return $this->json(['error' => (string) $errors], 400);
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[] = $error->getMessage();
+            }
+            return $this->json(['error' => implode(' ', $errorMessages)], 400);
         }
 
         $em->persist($product);
@@ -231,7 +242,11 @@ class ProductController extends AbstractController
         //El @Assert\Validates each field with the product entity
         $errors = $validator->validate($product);
         if (count($errors) > 0) {
-            return $this->json(['error' => (string) $errors], 400);
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[] = $error->getMessage();
+            }
+            return $this->json(['error' => implode(' ', $errorMessages)], 400);
         }
 
         $em->persist($product);
@@ -287,7 +302,7 @@ class ProductController extends AbstractController
         }
 
         // Restrict this action to admins only
-        if (!$this->isGranted('ROLE_LOGISTICS')) {
+        if (!$this->isGranted('ROLE_ADMIN')) {
             return $this->json(['error' => 'No tienes permisos para cambiar el estado de este producto.'], 403);
         }
 

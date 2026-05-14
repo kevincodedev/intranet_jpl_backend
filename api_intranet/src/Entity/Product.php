@@ -50,8 +50,8 @@ class Product
     /**
      * @ORM\Column(type="text", nullable=true)
      * @Assert\Length(
-     *      max=100,
-     *      maxMessage="El serial no puede tener más de {{ limit }} caracteres"
+     *      max=1000,
+     *      maxMessage="Las características no pueden tener más de {{ limit }} caracteres"
      * )
      */
     private $caracteristicas;
@@ -78,14 +78,14 @@ class Product
      * @Assert\NotBlank(message="La condición es obligatoria")
      * @Assert\Length(
      *      max=150,
-     *      maxMessage="El serial no puede tener más de {{ limit }} caracteres"
+     *      maxMessage="La condición no puede tener más de {{ limit }} caracteres"
      * )
      */
     private $condicion;
 
     /**
      * @ORM\Column(type="string", length=50)
-     * @Assert\NotBlank(message="La condición es obligatoria")
+     * @Assert\NotBlank(message="La locación es obligatoria")
      */
     private $locacion;
 

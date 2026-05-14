@@ -49,6 +49,10 @@ class AuthController extends AbstractController
             return new JsonResponse(['error' => 'Email, nombre, apellido y password son obligatorios'], 400);
         }
 
+        if (strlen($data['password']) < 6) {
+            return new JsonResponse(['error' => 'La contraseña debe tener al menos 6 caracteres'], 400);
+        }
+
         // Only admins and above can register users
         if (!$this->isGranted('ROLE_ADMIN')) {
             return new JsonResponse(['error' => 'No tienes permisos para registrar usuarios.'], 403);
