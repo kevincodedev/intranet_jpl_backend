@@ -30,21 +30,30 @@ class ProductRepository extends ServiceEntityRepository
                 ->setParameter('empresa', $empresa);
         }
 
-        // 3. Incremental Search 
+        // 3. Multi-word Incremental Search 
         if ($term !== null && $term !== '') {
-            $qb->andWhere(
-                $qb->expr()->orX(
-                    'p.nombre LIKE :term',
-                    'p.color LIKE :term',
-                    'p.categoria LIKE :term',
-                    'p.marca LIKE :term',
-                    'p.modelo LIKE :term',
-                    'p.serial LIKE :term',
-                    'p.locacion LIKE :term',
-                    'p.caracteristicas LIKE :term',
-                    'p.empresa LIKE :term'
-                )
-            )->setParameter('term', '%' . $term . '%');
+            $words = explode(' ', $term);
+            $i = 0;
+            foreach ($words as $word) {
+                $word = trim($word);
+                if ($word === '') continue;
+                
+                $paramName = 'term_' . $i;
+                $qb->andWhere(
+                    $qb->expr()->orX(
+                        "p.nombre LIKE :$paramName",
+                        "p.color LIKE :$paramName",
+                        "p.categoria LIKE :$paramName",
+                        "p.marca LIKE :$paramName",
+                        "p.modelo LIKE :$paramName",
+                        "p.serial LIKE :$paramName",
+                        "p.locacion LIKE :$paramName",
+                        "p.caracteristicas LIKE :$paramName",
+                        "p.empresa LIKE :$paramName"
+                    )
+                )->setParameter($paramName, '%' . $word . '%');
+                $i++;
+            }
         }
 
         // Dynamic Sorting
