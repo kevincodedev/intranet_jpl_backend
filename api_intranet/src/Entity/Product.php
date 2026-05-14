@@ -96,6 +96,11 @@ class Product
     private $cantidad;
 
     /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     */
+    private $empresa;
+
+    /**
      * @ORM\Column(type="datetime", nullable=true)
      */
     private $deletedAt;
@@ -214,6 +219,17 @@ class Product
     public function setCantidad(?int $cantidad): self
     {
         $this->cantidad = $cantidad;
+        return $this;
+    }
+
+    public function getEmpresa(): ?string
+    {
+        return $this->empresa;
+    }
+
+    public function setEmpresa(?string $empresa): self
+    {
+        $this->empresa = $empresa;
         return $this;
     }
 
