@@ -332,7 +332,7 @@ class ProductController extends AbstractController
      *     @OA\Response(response=400, description="Validation Errors or Invalid JSON")
      * )
      */
-    public function bulkCreate(Request $request, EntityManagerInterface $em, ValidatorInterface $validator): JsonResponse
+    public function bulkCreate(Request $request, EntityManagerInterface $em, ValidatorInterface $validator, \App\Service\AuditLogger $auditLogger): JsonResponse
     {
         if (!$this->isGranted('ROLE_LOGISTICS')) {
             return $this->json(['error' => 'No tienes permisos para realizar cargas masivas.'], 403);
@@ -344,6 +344,9 @@ class ProductController extends AbstractController
         if ($data === null || !is_array($data)) {
             return $this->json(['error' => 'Formato JSON inválido. Se espera una lista de productos.'], 400);
         }
+
+        // Mute individual logs to avoid saturating MySQL
+        $auditLogger->mute();
 
         $batchSize = 20;
         $allErrors = [];
@@ -397,6 +400,7 @@ class ProductController extends AbstractController
         }
 
         if (count($allErrors) > 0) {
+            $auditLogger->unmute();
             return $this->json([
                 'error' => 'Se encontraron errores de validación. No se procesó la carga.',
                 'total_filas' => count($data),
@@ -406,14 +410,23 @@ class ProductController extends AbstractController
         }
 
         // Batch processing
-        foreach ($productsToSave as $i => $product) {
-            $em->persist($product);
-            if (($i % $batchSize) === 0) {
-                $em->flush();
+        try {
+            foreach ($productsToSave as $i => $product) {
+                $em->persist($product);
+                if (($i % $batchSize) === 0) {
+                    $em->flush();
+                }
             }
-        }
+            $em->flush();
+            
+            // Log the bulk summary
+            $auditLogger->unmute();
+            $auditLogger->logBulk(Product::class, count($productsToSave), $data);
 
-        $em->flush();
+        } catch (\Exception $e) {
+            $auditLogger->unmute();
+            return $this->json(['error' => 'Error al guardar los productos: ' . $e->getMessage()], 500);
+        }
 
         return $this->json([
             'message' => count($productsToSave) . ' productos cargados exitosamente.',

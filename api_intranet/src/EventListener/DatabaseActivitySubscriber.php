@@ -15,11 +15,13 @@ class DatabaseActivitySubscriber implements EventSubscriber
 {
     private $security;
     private $requestStack;
+    private $auditLogger;
 
-    public function __construct(Security $security, RequestStack $requestStack)
+    public function __construct(Security $security, RequestStack $requestStack, \App\Service\AuditLogger $auditLogger)
     {
         $this->security = $security;
         $this->requestStack = $requestStack;
+        $this->auditLogger = $auditLogger;
     }
 
     public function getSubscribedEvents(): array
@@ -48,6 +50,10 @@ class DatabaseActivitySubscriber implements EventSubscriber
 
     private function logActivity(string $action, LifecycleEventArgs $args): void
     {
+        if ($this->auditLogger->isMuted()) {
+            return;
+        }
+
         $entity = $args->getObject();
 
         // Skip logging for certain entities to avoid noise or infinite loops

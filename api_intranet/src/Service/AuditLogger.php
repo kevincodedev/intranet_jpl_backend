@@ -14,6 +14,8 @@ class AuditLogger
     private $security;
     private $requestStack;
 
+    private $isMuted = false;
+
     public function __construct(EntityManagerInterface $em, Security $security, RequestStack $requestStack)
     {
         $this->em = $em;
@@ -21,16 +23,35 @@ class AuditLogger
         $this->requestStack = $requestStack;
     }
 
+    public function mute(): void
+    {
+        $this->isMuted = true;
+    }
+
+    public function unmute(): void
+    {
+        $this->isMuted = false;
+    }
+
+    public function isMuted(): bool
+    {
+        return $this->isMuted;
+    }
+
     /**
      * Records an audit log entry.
      * 
-     * @param string $action CREATE, EDIT, DELETE, LOGIN, LOGOUT
+     * @param string $action CREATE, EDIT, DELETE, LOGIN, LOGOUT, BULK_CREATE
      * @param string|null $entityName Name of the entity affected
      * @param string|null $entityId ID of the entity affected
      * @param array $details JSON serializable details about the change
      */
     public function log(string $action, ?string $entityName = null, ?string $entityId = null, array $details = []): void
     {
+        if ($this->isMuted && !str_starts_with($action, 'BULK_')) {
+            return;
+        }
+
         $user = $this->security->getUser();
         $userEmail = $user instanceof User ? $user->getEmail() : 'anonymous';
 
@@ -45,10 +66,21 @@ class AuditLogger
         $log->setDetails($details);
         $log->setIpAddress($ip);
 
-        // We use a separate connection or immediate flush if needed, 
-        // but normally we can just persist and let the main flush handle it.
-        // However, for Doctrine listeners, we must be careful with flushing.
         $this->em->persist($log);
         $this->em->flush();
+    }
+
+    /**
+     * Logs a summary of a bulk operation to avoid hitting database limits.
+     */
+    public function logBulk(string $entityName, int $totalCount, array $sampleData = [], string $action = 'BULK_CREATE'): void
+    {
+        $details = [
+            'total_items' => $totalCount,
+            'sample_items' => array_slice($sampleData, 0, 5), // Only first 5 items
+            'info' => "Procesamiento masivo de $totalCount registros."
+        ];
+
+        $this->log($action, $entityName, 'BATCH', $details);
     }
 }
