@@ -28,6 +28,8 @@ class UserController extends AbstractController
      * @OA\Parameter(name="limit", in="query", description="Page limit (10, 25, 50, 100)", @OA\Schema(type="integer", default=25)),
      * @OA\Parameter(name="page", in="query", description="Page Number", @OA\Schema(type="integer", default=1)),
      * @OA\Parameter(name="role", in="query", description="Filter by role name (e.g. ROLE_ADMIN)", @OA\Schema(type="string")),
+     * @OA\Parameter(name="sort", in="query", description="Sort by field (id, email, name, surname)", @OA\Schema(type="string", default="id")),
+     * @OA\Parameter(name="order", in="query", description="Sort order (ASC, DESC)", @OA\Schema(type="string", default="DESC")),
      *     @OA\Response(response=200, description="List of users"),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
@@ -42,13 +44,15 @@ class UserController extends AbstractController
         $role = $request->query->get('role');
         $page = $request->query->getInt('page', 1);
         $limit = $request->query->getInt('limit', 25);
+        $sort = $request->query->get('sort', 'id');
+        $order = $request->query->get('order', 'DESC');
 
         // 2. Validate limit to prevent database stress
         if (!in_array($limit, [10, 25, 50, 100])) {
-            $limit = 10;
+            $limit = 25;
         }
         // User must be admin to reach here, so they can see all users
-        $result = $repository->searchAndPaginate($search, $page, $limit, true, $role);
+        $result = $repository->searchAndPaginate($search, $page, $limit, true, $role, $sort, $order);
 
         return $this->json($result);
     }

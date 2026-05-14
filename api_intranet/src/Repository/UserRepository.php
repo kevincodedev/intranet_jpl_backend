@@ -39,7 +39,7 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $this->_em->persist($user);
         $this->_em->flush();
     }
-    public function searchAndPaginate($term, $page = 1, $limit = 25, bool $hasAdminAccess = false, ?string $role = null)
+    public function searchAndPaginate($term, $page = 1, $limit = 25, bool $hasAdminAccess = false, ?string $role = null, $sort = 'id', $order = 'DESC')
     {
         $qb = $this->createQueryBuilder('u');
 
@@ -54,18 +54,33 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
                 ->setParameter('role', '%"' . $role . '"%');
         }
 
-        // Secondary search term filter
+        // Multi-word search term filter
         if ($term) {
-            $qb->andWhere(
-                $qb->expr()->orX(
-                    'u.email LIKE :term',
-                    'u.name LIKE :term',
-                    'u.surname LIKE :term'
-                )
-            )->setParameter('term', '%' . $term . '%');
+            $words = explode(' ', $term);
+            $i = 0;
+            foreach ($words as $word) {
+                $word = trim($word);
+                if ($word === '') continue;
+
+                $paramName = 'term_' . $i;
+                $qb->andWhere(
+                    $qb->expr()->orX(
+                        "u.email LIKE :$paramName",
+                        "u.name LIKE :$paramName",
+                        "u.surname LIKE :$paramName"
+                    )
+                )->setParameter($paramName, '%' . $word . '%');
+                $i++;
+            }
         }
 
-        $qb->orderBy('u.id', 'DESC');
+        // Dynamic Sorting
+        $allowedFields = ['id', 'email', 'name', 'surname'];
+        if (!in_array($sort, $allowedFields)) {
+            $sort = 'id';
+        }
+        $order = strtoupper($order) === 'ASC' ? 'ASC' : 'DESC';
+        $qb->orderBy('u.' . $sort, $order);
 
         // Apply Pagination
         $qb->setFirstResult(($page - 1) * $limit)
