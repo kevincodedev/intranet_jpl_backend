@@ -50,8 +50,8 @@ class Product
     /**
      * @ORM\Column(type="text", nullable=true)
      * @Assert\Length(
-     *      max=100,
-     *      maxMessage="El serial no puede tener más de {{ limit }} caracteres"
+     *      max=1000,
+     *      maxMessage="Las características no pueden tener más de {{ limit }} caracteres"
      * )
      */
     private $caracteristicas;
@@ -78,14 +78,14 @@ class Product
      * @Assert\NotBlank(message="La condición es obligatoria")
      * @Assert\Length(
      *      max=150,
-     *      maxMessage="El serial no puede tener más de {{ limit }} caracteres"
+     *      maxMessage="La condición no puede tener más de {{ limit }} caracteres"
      * )
      */
     private $condicion;
 
     /**
      * @ORM\Column(type="string", length=50)
-     * @Assert\NotBlank(message="La condición es obligatoria")
+     * @Assert\NotBlank(message="La locación es obligatoria")
      */
     private $locacion;
 
@@ -94,6 +94,11 @@ class Product
      * @Assert\PositiveOrZero(message="La cantidad no puede ser negativa")
      */
     private $cantidad;
+
+    /**
+     * @ORM\Column(type="string", length=255, nullable=true)
+     */
+    private $empresa;
 
     /**
      * @ORM\Column(type="datetime", nullable=true)
@@ -214,6 +219,17 @@ class Product
     public function setCantidad(?int $cantidad): self
     {
         $this->cantidad = $cantidad;
+        return $this;
+    }
+
+    public function getEmpresa(): ?string
+    {
+        return $this->empresa;
+    }
+
+    public function setEmpresa(?string $empresa): self
+    {
+        $this->empresa = $empresa;
         return $this;
     }
 

@@ -25,6 +25,12 @@ class UserUpdateDto
     /** @Assert\Type("string") */
     public $surname;
 
+    /**
+     * @Assert\Length(
+     *      min=6,
+     *      minMessage="La contraseña debe tener al menos {{ limit }} caracteres"
+     * )
+     */
     public $password;
 
     /**

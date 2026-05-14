@@ -15,7 +15,7 @@ class ProductRepository extends ServiceEntityRepository
     }
 
     //function handling search field and pagination
-    public function searchAndPaginate($term, $page = 1, $limit = 25, ?string $category = null, bool $onlyActive = true)
+    public function searchAndPaginate($term, $page = 1, $limit = 25, ?string $empresa = null, bool $onlyActive = true, $sort = 'id', $order = 'DESC')
     {
         $qb = $this->createQueryBuilder('p');
 
@@ -24,10 +24,10 @@ class ProductRepository extends ServiceEntityRepository
             $qb->andWhere('p.deletedAt IS NULL');
         }
 
-        // 2. Category Filter 
-        if ($category !== null && $category !== '') {
-            $qb->andWhere('p.categoria = :category')
-                ->setParameter('category', $category);
+        // 2. Empresa Filter 
+        if ($empresa !== null && $empresa !== '') {
+            $qb->andWhere('p.empresa = :empresa')
+                ->setParameter('empresa', $empresa);
         }
 
         // 3. Incremental Search 
@@ -41,12 +41,19 @@ class ProductRepository extends ServiceEntityRepository
                     'p.modelo LIKE :term',
                     'p.serial LIKE :term',
                     'p.locacion LIKE :term',
-                    'p.caracteristicas LIKE :term'
+                    'p.caracteristicas LIKE :term',
+                    'p.empresa LIKE :term'
                 )
             )->setParameter('term', '%' . $term . '%');
         }
 
-        $qb->orderBy('p.id', 'DESC');
+        // Dynamic Sorting
+        $allowedFields = ['id', 'nombre', 'categoria', 'marca', 'modelo', 'color', 'serial', 'condicion', 'locacion', 'cantidad', 'empresa'];
+        if (!in_array($sort, $allowedFields)) {
+            $sort = 'id';
+        }
+        $order = strtoupper($order) === 'ASC' ? 'ASC' : 'DESC';
+        $qb->orderBy('p.' . $sort, $order);
 
         // Pagination
         $offset = ($page - 1) * $limit;
@@ -71,6 +78,8 @@ class ProductRepository extends ServiceEntityRepository
                 'condicion' => $product->getCondicion(),
                 'locacion' => $product->getLocacion(),
                 'cantidad' => $product->getCantidad(),
+                'empresa' => $product->getEmpresa(),
+                'isActive' => $product->isActive(),
             ];
 
             // If admin, include deletedat info

@@ -25,25 +25,29 @@ class ProductController extends AbstractController
      * @OA\Parameter(name="search", in="query", description="Search String", @OA\Schema(type="string")),
      * @OA\Parameter(name="limit", in="query", description="Page limit (10, 25, 50, 100)", @OA\Schema(type="integer", default=25)),
      * @OA\Parameter(name="page", in="query", description="Page Number", @OA\Schema(type="integer", default=1)),
-     * @OA\Parameter(name="category", in="query", description="Product Category", @OA\Schema(type="string", default="")),
+     * @OA\Parameter(name="empresa", in="query", description="Filter by exact Empresa name", @OA\Schema(type="string")),
+     * @OA\Parameter(name="sort", in="query", description="Sort by field (id, nombre, categoria, marca, modelo, empresa, cantidad, etc.)", @OA\Schema(type="string", default="id")),
+     * @OA\Parameter(name="order", in="query", description="Sort order (ASC, DESC)", @OA\Schema(type="string", default="DESC")),
      * @OA\Response(response=200, description="List of products")
      * )
      */
     //Manages the search query
     public function index(Request $request, ProductRepository $repository): JsonResponse
     {
-        $search = $request->query->get('search', '');
-        $limit = $request->query->getInt('limit', 25);
-        $page = $request->query->getInt('page', 1);
-        $category = $request->query->get('category', '');
+        $search  = $request->query->get('search', '');
+        $limit   = $request->query->getInt('limit', 25);
+        $page    = $request->query->getInt('page', 1);
+        $empresa = $request->query->get('empresa');
+        $sort    = $request->query->get('sort', 'id');
+        $order   = $request->query->get('order', 'DESC');
 
         if (!in_array($limit, [10, 25, 50, 100])) {
             $limit = 25;
         }
 
         // If they ARE NOT an admin, we only want active products
-        $onlyActive = !$this->isGranted('ROLE_LOGISTICS');
-        $result = $repository->searchAndPaginate($search, $page, $limit, $category, $onlyActive);
+        $onlyActive = !$this->isGranted('ROLE_ADMIN');
+        $result = $repository->searchAndPaginate($search, $page, $limit, $empresa, $onlyActive, $sort, $order);
 
         return $this->json($result);
     }
@@ -60,6 +64,7 @@ class ProductController extends AbstractController
      *         description="Product details",
      *         @OA\JsonContent(
      *             type="object",
+     *             @OA\Property(property="id", type="integer", example=1),
      *             @OA\Property(property="nombre", type="string", example="Laptop ThinkPad"),
      *             @OA\Property(property="categoria", type="string", example="Computación"),
      *             @OA\Property(property="marca", type="string", example="Lenovo"),
@@ -70,6 +75,8 @@ class ProductController extends AbstractController
      *             @OA\Property(property="condicion", type="string", example="Nuevo"),
      *             @OA\Property(property="locacion", type="string", example="Almacén Principal"),
      *             @OA\Property(property="cantidad", type="integer", example=10),
+     *             @OA\Property(property="empresa", type="string", example="JPL"),
+     *             @OA\Property(property="isActive", type="boolean", example=true),
      *             @OA\Property(property="deletedAt", type="string", nullable=true, example=null)
      *         )
      *     ),
@@ -102,7 +109,8 @@ class ProductController extends AbstractController
             'condicion' => $product->getCondicion(),
             'locacion' => $product->getLocacion(),
             'cantidad' => $product->getCantidad(),
-            'deletedAt' => $product->getDeletedAt(),
+            'empresa' => $product->getEmpresa(),
+            'isActive' => $product->isActive(),
         ];
 
         if ($this->isGranted('ROLE_LOGISTICS')) {
@@ -141,7 +149,14 @@ class ProductController extends AbstractController
         if (!$this->isGranted('ROLE_LOGISTICS')) {
             return $this->json(['error' => 'No tienes permisos para crear productos.'], 403);
         }
-        $data = json_decode($request->getContent(), true) ?? [];
+        $content = $request->getContent();
+        $data = json_decode($content, true);
+
+        if ($content && $data === null) {
+            return $this->json(['error' => 'Formato JSON inválido'], 400);
+        }
+
+        $data = $data ?: [];
         $product = new Product();
 
 
@@ -156,12 +171,17 @@ class ProductController extends AbstractController
         $product->setCondicion($data['condicion'] ?? '');
         $product->setLocacion($data['locacion'] ?? null);
         $product->setCantidad($data['cantidad'] ?? null);
+        $product->setEmpresa($data['empresa'] ?? null);
 
 
         // El @Assert\Validates each field with the product entity
         $errors = $validator->validate($product);
         if (count($errors) > 0) {
-            return $this->json(['error' => (string) $errors], 400);
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[] = $error->getMessage();
+            }
+            return $this->json(['error' => implode(' ', $errorMessages)], 400);
         }
 
         $em->persist($product);
@@ -188,6 +208,7 @@ class ProductController extends AbstractController
      *             @OA\Property(property="condicion", type="string"),
      *             @OA\Property(property="locacion", type="string"),
      *             @OA\Property(property="cantidad", type="integer"),
+     *             @OA\Property(property="empresa", type="string"),
      *             @OA\Property(property="deletedAt", type="string", nullable=true, example=null)
      *         )
      *     ),
@@ -227,11 +248,16 @@ class ProductController extends AbstractController
         if (array_key_exists('locacion', $data)) $product->setLocacion($data['locacion']);
         if (array_key_exists('condicion', $data)) $product->setCondicion($data['condicion']);
         if (array_key_exists('cantidad', $data)) $product->setCantidad($data['cantidad']);
+        if (array_key_exists('empresa', $data)) $product->setEmpresa($data['empresa']);
 
         //El @Assert\Validates each field with the product entity
         $errors = $validator->validate($product);
         if (count($errors) > 0) {
-            return $this->json(['error' => (string) $errors], 400);
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[] = $error->getMessage();
+            }
+            return $this->json(['error' => implode(' ', $errorMessages)], 400);
         }
 
         $em->persist($product);
@@ -287,7 +313,7 @@ class ProductController extends AbstractController
         }
 
         // Restrict this action to admins only
-        if (!$this->isGranted('ROLE_LOGISTICS')) {
+        if (!$this->isGranted('ROLE_ADMIN')) {
             return $this->json(['error' => 'No tienes permisos para cambiar el estado de este producto.'], 403);
         }
 

@@ -125,6 +125,7 @@ class SeedDatabaseCommand extends Command
                 'condicion'       => 'Bueno',
                 'locacion'        => 'Oficina A',
                 'cantidad'        => 5,
+                'empresa'         => 'JPL',
             ],
             [
                 'nombre'          => 'Monitor LG UltraWide',
@@ -137,6 +138,7 @@ class SeedDatabaseCommand extends Command
                 'condicion'       => 'Excelente',
                 'locacion'        => 'Sala de Reuniones',
                 'cantidad'        => 10,
+                'empresa'         => 'Pafar',
             ],
             [
                 'nombre'          => 'Teclado Mecánico Logitech MX',
@@ -149,6 +151,7 @@ class SeedDatabaseCommand extends Command
                 'condicion'       => 'Nuevo',
                 'locacion'        => 'Almacén',
                 'cantidad'        => 20,
+                'empresa'         => '3d3',
             ],
         ];
 
@@ -168,6 +171,7 @@ class SeedDatabaseCommand extends Command
             $product->setCondicion($pd['condicion']);
             $product->setLocacion($pd['locacion']);
             $product->setCantidad($pd['cantidad']);
+            $product->setEmpresa($pd['empresa'] ?? null);
 
             $this->em->persist($product);
 

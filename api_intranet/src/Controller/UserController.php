@@ -47,9 +47,8 @@ class UserController extends AbstractController
         if (!in_array($limit, [10, 25, 50, 100])) {
             $limit = 10;
         }
-        // If they ARE NOT an admin, we only want active products
-        $hasAdminAccess = $this->isGranted('ROLE_ADMIN');
-        $result = $repository->searchAndPaginate($search, $page, $limit, $hasAdminAccess, $role);
+        // User must be admin to reach here, so they can see all users
+        $result = $repository->searchAndPaginate($search, $page, $limit, true, $role);
 
         return $this->json($result);
     }
@@ -166,7 +165,11 @@ class UserController extends AbstractController
         // Validates data
         $errors = $validator->validate($dto);
         if (count($errors) > 0) {
-            return $this->json(['error' => (string) $errors], 400);
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[] = $error->getMessage();
+            }
+            return $this->json(['error' => implode(' ', $errorMessages)], 400);
         }
 
         // Checks if user has permission to edit an user role

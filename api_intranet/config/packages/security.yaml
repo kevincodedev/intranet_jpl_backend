@@ -74,8 +74,6 @@ security:
         - { path: ^/api/token/refresh, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/api/register, roles: ROLE_ADMIN }
         - { path: ^/api/logout, roles: IS_AUTHENTICATED_ANONYMOUSLY }
-        - { path: ^/api/me, roles: IS_AUTHENTICATED_ANONYMOUSLY }
-        - { path: ^/api/check-password, roles: IS_AUTHENTICATED_ANONYMOUSLY }
 
         - { path: ^/reset-password, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/api/users, roles: IS_AUTHENTICATED_FULLY }
