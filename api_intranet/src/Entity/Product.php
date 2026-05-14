@@ -9,10 +9,6 @@ use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 /**
  * @ORM\Entity(repositoryClass=ProductRepository::class)
- * @UniqueEntity(
- *     fields={"serial"},
- *     message="Este número de serial ya existe en el inventario."
- * )
  */
 class Product
 {
