@@ -103,6 +103,11 @@ class Product
     /**
      * @ORM\Column(type="datetime", nullable=true)
      */
+    private $registeredAt;
+
+    /**
+     * @ORM\Column(type="datetime", nullable=true)
+     */
     private $deletedAt;
 
     // --- GETTERS Y SETTERS ---
@@ -230,6 +235,17 @@ class Product
     public function setEmpresa(?string $empresa): self
     {
         $this->empresa = $empresa;
+        return $this;
+    }
+
+    public function getRegisteredAt(): ?\DateTimeInterface
+    {
+        return $this->registeredAt;
+    }
+
+    public function setRegisteredAt(?\DateTimeInterface $registeredAt): self
+    {
+        $this->registeredAt = $registeredAt;
         return $this;
     }
 
