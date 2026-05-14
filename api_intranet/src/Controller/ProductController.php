@@ -357,7 +357,7 @@ class ProductController extends AbstractController
             $product = new Product();
 
             // Asignación con valores por defecto "N/A" para campos obligatorios si vienen vacíos
-            $product->setNombre(!empty($item['nombre']) ? $item['nombre'] : 'Producto sin nombre');
+            $product->setNombre(!empty($item['nombre']) ? $item['nombre'] : 'N/A');
             $product->setCategoria(!empty($item['categoria']) ? $item['categoria'] : 'N/A');
             $product->setMarca(!empty($item['marca']) ? $item['marca'] : 'N/A');
             $product->setModelo(!empty($item['modelo']) ? $item['modelo'] : 'N/A');
@@ -369,7 +369,7 @@ class ProductController extends AbstractController
             $product->setCondicion(!empty($item['condicion']) ? $item['condicion'] : 'N/A');
             $product->setLocacion(!empty($item['locacion']) ? $item['locacion'] : 'N/A');
             $product->setCantidad(isset($item['cantidad']) ? (int)$item['cantidad'] : 0);
-            $product->setEmpresa(!empty($item['empresa']) ? $item['empresa'] : 'JPL');
+            $product->setEmpresa(!empty($item['empresa']) ? $item['empresa'] : 'N/A');
 
             if (!empty($item['registeredAt'])) {
                 try {
@@ -418,11 +418,10 @@ class ProductController extends AbstractController
                 }
             }
             $em->flush();
-            
+
             // Log the bulk summary
             $auditLogger->unmute();
             $auditLogger->logBulk(Product::class, count($productsToSave), $data);
-
         } catch (\Exception $e) {
             $auditLogger->unmute();
             return $this->json(['error' => 'Error al guardar los productos: ' . $e->getMessage()], 500);
