@@ -118,6 +118,7 @@ class DatabaseActivitySubscriber implements EventSubscriber
                 if (method_exists($entity, 'getName')) $data['name'] = $entity->getName();
                 if (method_exists($entity, 'getNombre')) $data['nombre'] = $entity->getNombre();
                 if (method_exists($entity, 'getTitle')) $data['title'] = $entity->getTitle();
+                if (method_exists($entity, 'getContent')) $data['content'] = $entity->getContent();
             }
             
             $log->setDetails($data);

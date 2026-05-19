@@ -23,14 +23,10 @@ class ChatMessage
     private $content;
 
     /**
-     * @ORM\Column(type="string", length=100)
+     * @ORM\ManyToOne(targetEntity=Conversation::class, inversedBy="messages")
+     * @ORM\JoinColumn(nullable=false)
      */
-    private $category;
-
-    /**
-     * @ORM\Column(type="string", length=100)
-     */
-    private $topic;
+    private $conversation;
 
     /**
      * @ORM\Column(type="datetime")
@@ -75,26 +71,14 @@ class ChatMessage
         return $this;
     }
 
-    public function getCategory(): ?string
+    public function getConversation(): ?Conversation
     {
-        return $this->category;
+        return $this->conversation;
     }
 
-    public function setCategory(string $category): self
+    public function setConversation(?Conversation $conversation): self
     {
-        $this->category = $category;
-
-        return $this;
-    }
-
-    public function getTopic(): ?string
-    {
-        return $this->topic;
-    }
-
-    public function setTopic(string $topic): self
-    {
-        $this->topic = $topic;
+        $this->conversation = $conversation;
 
         return $this;
     }

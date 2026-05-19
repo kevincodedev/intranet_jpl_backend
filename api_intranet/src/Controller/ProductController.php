@@ -26,6 +26,7 @@ class ProductController extends AbstractController
      * @OA\Parameter(name="limit", in="query", description="Page limit (10, 25, 50, 100)", @OA\Schema(type="integer", default=25)),
      * @OA\Parameter(name="page", in="query", description="Page Number", @OA\Schema(type="integer", default=1)),
      * @OA\Parameter(name="empresa", in="query", description="Filter by exact Empresa name", @OA\Schema(type="string")),
+     * @OA\Parameter(name="active", in="query", description="Filter by active status (true/false). Only admins/logistics can see false.", @OA\Schema(type="string")),
      * @OA\Parameter(name="sort", in="query", description="Sort by field (id, nombre, categoria, marca, modelo, empresa, cantidad, etc.)", @OA\Schema(type="string", default="id")),
      * @OA\Parameter(name="order", in="query", description="Sort order (ASC, DESC)", @OA\Schema(type="string", default="DESC")),
      * @OA\Response(response=200, description="List of products")
@@ -45,9 +46,19 @@ class ProductController extends AbstractController
             $limit = 25;
         }
 
-        // If they ARE NOT an admin, we only want active products
-        $onlyActive = !$this->isGranted('ROLE_ADMIN');
-        $result = $repository->searchAndPaginate($search, $page, $limit, $empresa, $onlyActive, $sort, $order);
+        $activeParam = $request->query->get('active');
+        $active = null;
+        if ($activeParam !== null && $activeParam !== '') {
+            $active = filter_var($activeParam, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        }
+
+        // Only ROLE_ADMIN or ROLE_LOGISTICS can see inactive products
+        $hasAccessToInactive = $this->isGranted('ROLE_ADMIN') || $this->isGranted('ROLE_LOGISTICS');
+        if (!$hasAccessToInactive) {
+            $active = true;
+        }
+
+        $result = $repository->searchAndPaginate($search, $page, $limit, $empresa, $active, $sort, $order);
 
         return $this->json($result);
     }
