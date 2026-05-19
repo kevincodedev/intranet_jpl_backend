@@ -28,6 +28,7 @@ class UserController extends AbstractController
      * @OA\Parameter(name="limit", in="query", description="Page limit (10, 25, 50, 100)", @OA\Schema(type="integer", default=25)),
      * @OA\Parameter(name="page", in="query", description="Page Number", @OA\Schema(type="integer", default=1)),
      * @OA\Parameter(name="role", in="query", description="Filter by role name (e.g. ROLE_ADMIN)", @OA\Schema(type="string")),
+     * @OA\Parameter(name="active", in="query", description="Filter by active status (true/false). Only admins can see false.", @OA\Schema(type="string")),
      * @OA\Parameter(name="sort", in="query", description="Sort by field (id, email, name, surname)", @OA\Schema(type="string", default="id")),
      * @OA\Parameter(name="order", in="query", description="Sort order (ASC, DESC)", @OA\Schema(type="string", default="DESC")),
      *     @OA\Response(response=200, description="List of users"),
@@ -47,12 +48,18 @@ class UserController extends AbstractController
         $sort = $request->query->get('sort', 'id');
         $order = $request->query->get('order', 'DESC');
 
+        $activeParam = $request->query->get('active');
+        $active = null;
+        if ($activeParam !== null && $activeParam !== '') {
+            $active = filter_var($activeParam, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        }
+
         // 2. Validate limit to prevent database stress
         if (!in_array($limit, [10, 25, 50, 100])) {
             $limit = 25;
         }
         // User must be admin to reach here, so they can see all users
-        $result = $repository->searchAndPaginate($search, $page, $limit, true, $role, $sort, $order);
+        $result = $repository->searchAndPaginate($search, $page, $limit, true, $role, $active, $sort, $order);
 
         return $this->json($result);
     }
@@ -243,12 +250,14 @@ class UserController extends AbstractController
             return $this->json(['error' => 'No puedes eliminarte a ti mismo por seguridad.'], 403);
         }
 
-        // Soft delete and append .deleted.timestamp to free up the email
-        if ($user->isActive()) {
-            $timestamp = time();
-            $user->setEmail($user->getEmail() . '.deleted.' . $timestamp);
-            $user->setDeletedAt(new \DateTime());
+        if (!$user->isActive()) {
+            return $this->json(['error' => 'that user is already deleted'], 400);
         }
+
+        // Soft delete and append .deleted.timestamp to free up the email
+        $timestamp = time();
+        $user->setEmail($user->getEmail() . '.deleted.' . $timestamp);
+        $user->setDeletedAt(new \DateTime());
         $em->flush();
 
         return $this->json(['message' => 'Usuario desactivado correctamente (borrado lógico)']);

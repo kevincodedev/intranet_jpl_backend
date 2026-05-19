@@ -16,7 +16,7 @@ nelmio_api_doc:
             /api/login:
                 post:
                     tags: [Autenticación]
-                    summary: Iniciar sesión y obtener token JWT
+                    summary: Authenticate user and retrieve JWT token
                     security: []
                     requestBody:
                         content:
@@ -38,7 +38,7 @@ nelmio_api_doc:
             /api/token/refresh:
                 post:
                     tags: [Autenticación]
-                    summary: Refrescar token JWT usando un refresh_token
+                    summary: Refresh JWT token using a refresh token
                     security: []
                     requestBody:
                         required: true

@@ -30,7 +30,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Post(
      *     path="/api/chat/conversations",
-     *     summary="Crea una nueva conversación (privada o grupal)",
+     *     summary="Create a new conversation (private or group)",
      *     tags={"Mensajeria"},
      *     @OA\RequestBody(
      *         required=true,
@@ -62,28 +62,35 @@ class ChatController extends AbstractController
     public function createConversation(Request $request, UserRepository $userRepository, ConversationRepository $convRepo, EntityManagerInterface $em): JsonResponse
     {
         /** @var User $currentUser */
-        $currentUser = $this->getUser();
-        $data = json_decode($request->getContent(), true);
+        $currentUser = $this->getUser(); // Obtains the current user
+        $data = json_decode($request->getContent(), true); // Retrieves the name, type and participants of the conversation.
 
-        $type = $data['type'] ?? 'private';
-        $name = $data['name'] ?? null;
         $participantIds = $data['participantIds'] ?? [];
+        $type = $data['type'] ?? (count($participantIds) > 1 ? 'group' : 'private'); // Defaults to a private chat if 2 participants, group for more.
+        $name = $data['name'] ?? null; // Group name is optional
 
-        if ($type === 'private') {
+        if ($type === 'private') { // Check to ensure atleast one participant is added
             if (empty($participantIds)) {
-                return $this->json(['error' => 'Recipient ID is required for private chat'], 400);
+                return $this->json(['error' => 'El ID del destinatario es obligatorio para un chat privado'], 400);
             }
-            $recipientId = $participantIds[0];
+            if (count($participantIds) !== 1) { // Check to ensure private chats can't have more than 2 participants.
+                return $this->json(['error' => 'Una conversación privada debe tener exactamente un destinatario'], 400);
+            }
+            $recipientId = $participantIds[0]; //Sets the recipient ID to the sole participant for recovery
+
+            if ($recipientId === $currentUser->getId()) { // Check to prevent private conversation with self
+                return $this->json(['error' => 'No puedes crear una conversación privada contigo mismo'], 400);
+            }
 
             // Check if conversation already exists
             $existing = $convRepo->findPrivateConversationBetweenUsers($currentUser->getId(), $recipientId);
             if ($existing) {
-                return $this->json(['id' => $existing->getId(), 'message' => 'Conversation already exists'], 200);
+                return $this->json(['id' => $existing->getId(), 'message' => 'La conversación ya existe'], 200);
             }
 
             $recipient = $userRepository->find($recipientId);
             if (!$recipient) {
-                return $this->json(['error' => 'Recipient not found'], 404);
+                return $this->json(['error' => 'Destinatario no encontrado'], 404);
             }
 
             $conversation = new Conversation();
@@ -143,7 +150,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Get(
      *     path="/api/chat/conversations",
-     *     summary="Lista todas las conversaciones del usuario autenticado",
+     *     summary="List all conversations for the authenticated user",
      *     tags={"Mensajeria"},
      *     @OA\Response(
      *         response=200,
@@ -188,7 +195,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Post(
      *     path="/api/chat/conversations/{id}/messages",
-     *     summary="Envía un mensaje en tiempo real a una conversación",
+     *     summary="Send a real-time message to a conversation",
      *     tags={"Mensajeria"},
      *     @OA\Parameter(
      *         name="id",
@@ -229,7 +236,7 @@ class ChatController extends AbstractController
         $conversation = $convRepo->find($id);
 
         if (!$conversation) {
-            return $this->json(['error' => 'Conversation not found'], 404);
+            return $this->json(['error' => 'Conversación no encontrada'], 404);
         }
 
         // Verify participation
@@ -242,14 +249,14 @@ class ChatController extends AbstractController
         }
 
         if (!$isParticipant) {
-            return $this->json(['error' => 'You are not a participant in this conversation'], 403);
+            return $this->json(['error' => 'No eres un participante en esta conversación'], 403);
         }
 
         $data = json_decode($request->getContent(), true);
         $content = $data['message'] ?? '';
 
         if (empty($content)) {
-            return $this->json(['error' => 'Message content cannot be empty'], 400);
+            return $this->json(['error' => 'El contenido del mensaje no puede estar vacío'], 400);
         }
 
         $chatMessage = new ChatMessage();
@@ -300,7 +307,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Get(
      *     path="/api/chat/conversations/{id}/messages",
-     *     summary="Obtiene el historial de mensajes de una conversación",
+     *     summary="Get the message history of a conversation",
      *     tags={"Mensajeria"},
      *     @OA\Parameter(
      *         name="id",
@@ -330,7 +337,7 @@ class ChatController extends AbstractController
         $conversation = $convRepo->find($id);
 
         if (!$conversation) {
-            return $this->json(['error' => 'Conversation not found'], 404);
+            return $this->json(['error' => 'Conversación no encontrada'], 404);
         }
 
         // Verify participation
@@ -343,7 +350,7 @@ class ChatController extends AbstractController
         }
 
         if (!$isParticipant) {
-            return $this->json(['error' => 'Access denied'], 403);
+            return $this->json(['error' => 'Acceso denegado'], 403);
         }
 
         $messages = $repository->findBy(
@@ -359,7 +366,7 @@ class ChatController extends AbstractController
                 'senderId' => $msg->getSender()->getId(),
                 'senderName' => $msg->getSender()->getDisplayName(),
                 'message' => $msg->getContent(),
-                'timestamp' => $msg->getCreatedAt()->format('c'),
+                'timestamp' => $msg->getUpdatedAt() ? $msg->getUpdatedAt()->format('c') : $msg->getCreatedAt()->format('c'),
                 'updatedAt' => $msg->getUpdatedAt() ? $msg->getUpdatedAt()->format('c') : null
             ];
         }
@@ -374,7 +381,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Put(
      *     path="/api/chat/messages/{id}",
-     *     summary="Edita un mensaje de chat dentro de una ventana de 30 minutos",
+     *     summary="Edit a chat message within a 30-minute window",
      *     tags={"Mensajeria"},
      *     @OA\Parameter(
      *         name="id",
@@ -413,27 +420,27 @@ class ChatController extends AbstractController
         $chatMessage = $repository->find($id);
 
         if (!$chatMessage) {
-            return $this->json(['error' => 'Message not found'], 404);
+            return $this->json(['error' => 'Mensaje no encontrado'], 404);
         }
 
         /** @var User $user */
         $user = $this->getUser();
 
         if ($chatMessage->getSender() !== $user) {
-            return $this->json(['error' => 'Unauthorized'], 403);
+            return $this->json(['error' => 'No autorizado'], 403);
         }
 
         $now = new \DateTime();
         $diff = $now->getTimestamp() - $chatMessage->getCreatedAt()->getTimestamp();
         if ($diff > (30 * 60)) {
-            return $this->json(['error' => 'Edit time window expired'], 403);
+            return $this->json(['error' => 'La ventana de tiempo para editar ha expirado'], 403);
         }
 
         $data = json_decode($request->getContent(), true);
         $newMessage = $data['message'] ?? '';
 
         if (empty($newMessage)) {
-            return $this->json(['error' => 'Message content cannot be empty'], 400);
+            return $this->json(['error' => 'El contenido del mensaje no puede estar vacío'], 400);
         }
 
         $chatMessage->setContent($newMessage);
@@ -469,7 +476,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Delete(
      *     path="/api/chat/messages/{id}",
-     *     summary="Elimina un mensaje de chat (soft delete)",
+     *     summary="Delete a chat message (soft delete)",
      *     tags={"Mensajeria"},
      *     @OA\Parameter(
      *         name="id",
@@ -497,7 +504,7 @@ class ChatController extends AbstractController
         $chatMessage = $repository->find($id);
 
         if (!$chatMessage) {
-            return $this->json(['error' => 'Message not found'], 404);
+            return $this->json(['error' => 'Mensaje no encontrado'], 404);
         }
 
         /** @var User $user */
@@ -514,7 +521,7 @@ class ChatController extends AbstractController
 
         $canDelete = ($chatMessage->getSender() === $user) || ($this->isGranted('ROLE_ADMIN') && $isParticipant);
         if (!$canDelete) {
-            return $this->json(['error' => 'Unauthorized'], 403);
+            return $this->json(['error' => 'No autorizado'], 403);
         }
 
         $payload = [
@@ -546,7 +553,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Delete(
      *     path="/api/chat/conversations/{id}",
-     *     summary="Oculta o elimina una conversación para el usuario autenticado",
+     *     summary="Hide/delete a conversation for the authenticated user",
      *     tags={"Mensajeria"},
      *     @OA\Parameter(
      *         name="id",
@@ -576,7 +583,7 @@ class ChatController extends AbstractController
         $conversation = $convRepo->find($id);
 
         if (!$conversation) {
-            return $this->json(['error' => 'Conversation not found'], 404);
+            return $this->json(['error' => 'Conversación no encontrada'], 404);
         }
 
         $participant = null;
@@ -588,13 +595,13 @@ class ChatController extends AbstractController
         }
 
         if (!$participant) {
-            return $this->json(['error' => 'You are not a participant in this conversation'], 403);
+            return $this->json(['error' => 'No eres un participante en esta conversación'], 403);
         }
 
         $participant->setDeletedAt(new \DateTime());
         $em->flush();
 
-        return $this->json(['status' => 'success', 'message' => 'Conversation hidden successfully']);
+        return $this->json(['status' => 'success', 'message' => 'Conversación oculta exitosamente']);
     }
 
     /**
@@ -604,7 +611,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Post(
      *     path="/api/chat/conversations/{id}/participants",
-     *     summary="Agrega uno o varios miembros a una conversación grupal (solo administradores de la conversación)",
+     *     summary="Add one or multiple members to a group conversation (admins only)",
      *     tags={"Mensajeria"},
      *     @OA\Parameter(
      *         name="id",
@@ -646,11 +653,11 @@ class ChatController extends AbstractController
         $conversation = $convRepo->find($id);
 
         if (!$conversation) {
-            return $this->json(['error' => 'Conversation not found'], 404);
+            return $this->json(['error' => 'Conversación no encontrada'], 404);
         }
 
         if ($conversation->getType() !== 'group') {
-            return $this->json(['error' => 'Cannot add participants to a private conversation'], 400);
+            return $this->json(['error' => 'No se pueden agregar participantes a una conversación privada'], 400);
         }
 
         // Verify current user is group admin
@@ -665,11 +672,11 @@ class ChatController extends AbstractController
         }
 
         if (!$isGroupAdmin) {
-            return $this->json(['error' => 'Only conversation admins can add members'], 403);
+            return $this->json(['error' => 'Solo los administradores de la conversación pueden agregar miembros'], 403);
         }
 
         $data = json_decode($request->getContent(), true);
-        
+
         $userIds = $data['userIds'] ?? [];
         if (isset($data['userId'])) {
             $userIds[] = $data['userId'];
@@ -677,7 +684,7 @@ class ChatController extends AbstractController
         $userIds = array_unique(array_filter($userIds));
 
         if (empty($userIds)) {
-            return $this->json(['error' => 'User ID or User IDs are required'], 400);
+            return $this->json(['error' => 'El ID de usuario o la lista de IDs de usuario son obligatorios'], 400);
         }
 
         $addedUsers = [];
@@ -686,7 +693,7 @@ class ChatController extends AbstractController
         foreach ($userIds as $userId) {
             $targetUser = $userRepository->find($userId);
             if (!$targetUser) {
-                $failedUsers[] = ['userId' => $userId, 'error' => 'User not found'];
+                $failedUsers[] = ['userId' => $userId, 'error' => 'Usuario no encontrado'];
                 continue;
             }
 
@@ -702,7 +709,7 @@ class ChatController extends AbstractController
                         $p->setRole('member');
                         $addedUsers[] = ['userId' => $userId, 'status' => 'reactivated', 'name' => $targetUser->getDisplayName()];
                     } else {
-                        $failedUsers[] = ['userId' => $userId, 'error' => 'User is already an active participant'];
+                        $failedUsers[] = ['userId' => $userId, 'error' => 'El usuario ya es un participante activo'];
                     }
                     break;
                 }
@@ -714,7 +721,7 @@ class ChatController extends AbstractController
                 $participant->setRole('member');
                 $conversation->addParticipant($participant);
                 $em->persist($participant);
-                
+
                 $addedUsers[] = ['userId' => $userId, 'status' => 'added', 'name' => $targetUser->getDisplayName()];
             }
         }
@@ -735,7 +742,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Delete(
      *     path="/api/chat/conversations/{id}/participants/{userId}",
-     *     summary="Expulsa un miembro de una conversación grupal",
+     *     summary="Kick a member from a group conversation",
      *     tags={"Mensajeria"},
      *     @OA\Parameter(
      *         name="id",
@@ -776,15 +783,15 @@ class ChatController extends AbstractController
         $conversation = $convRepo->find($id);
 
         if (!$conversation) {
-            return $this->json(['error' => 'Conversation not found'], 404);
+            return $this->json(['error' => 'Conversación no encontrada'], 404);
         }
 
         if ($conversation->getType() !== 'group') {
-            return $this->json(['error' => 'Cannot kick participants from a private conversation'], 400);
+            return $this->json(['error' => 'No se pueden expulsar participantes de una conversación privada'], 400);
         }
 
         if ($currentUser->getId() === $userId) {
-            return $this->json(['error' => 'You cannot kick yourself. Please use the delete endpoint to leave the conversation'], 400);
+            return $this->json(['error' => 'No puedes expulsarte a ti mismo. Por favor usa el endpoint de salir para abandonar la conversación'], 400);
         }
 
         // Verify current user is group admin
@@ -799,7 +806,7 @@ class ChatController extends AbstractController
         }
 
         if (!$isGroupAdmin) {
-            return $this->json(['error' => 'Only conversation admins can kick members'], 403);
+            return $this->json(['error' => 'Solo los administradores de la conversación pueden expulsar miembros'], 403);
         }
 
         $targetParticipant = null;
@@ -811,13 +818,13 @@ class ChatController extends AbstractController
         }
 
         if (!$targetParticipant) {
-            return $this->json(['error' => 'Participant not found in this conversation'], 404);
+            return $this->json(['error' => 'Participante no encontrado en esta conversación'], 404);
         }
 
         $em->remove($targetParticipant);
         $em->flush();
 
-        return $this->json(['status' => 'success', 'message' => 'User kicked from group successfully']);
+        return $this->json(['status' => 'success', 'message' => 'Usuario expulsado del grupo exitosamente']);
     }
 
     /**
@@ -827,7 +834,7 @@ class ChatController extends AbstractController
      * 
      * @OA\Post(
      *     path="/api/chat/conversations/{id}/leave",
-     *     summary="Permite a un participante abandonar una conversación grupal voluntariamente",
+     *     summary="Voluntarily leave a group conversation",
      *     tags={"Mensajeria"},
      *     @OA\Parameter(
      *         name="id",
@@ -861,11 +868,11 @@ class ChatController extends AbstractController
         $conversation = $convRepo->find($id);
 
         if (!$conversation) {
-            return $this->json(['error' => 'Conversation not found'], 404);
+            return $this->json(['error' => 'Conversación no encontrada'], 404);
         }
 
         if ($conversation->getType() !== 'group') {
-            return $this->json(['error' => 'Cannot leave a private conversation. Use delete endpoint to hide it'], 400);
+            return $this->json(['error' => 'No se puede abandonar una conversación privada. Usa el endpoint de eliminar para ocultarla'], 400);
         }
 
         $targetParticipant = null;
@@ -877,12 +884,130 @@ class ChatController extends AbstractController
         }
 
         if (!$targetParticipant) {
-            return $this->json(['error' => 'You are not a participant in this conversation'], 403);
+            return $this->json(['error' => 'No eres un participante en esta conversación'], 403);
         }
 
         $em->remove($targetParticipant);
         $em->flush();
 
-        return $this->json(['status' => 'success', 'message' => 'You have left the conversation successfully']);
+        return $this->json(['status' => 'success', 'message' => 'Has abandonado la conversación exitosamente']);
+    }
+
+    /**
+     * Promote or demote a participant's role in a group conversation.
+     * 
+     * @Route("/conversations/{id}/participants/{userId}/role", name="update_participant_role", methods={"PUT"})
+     * 
+     * @OA\Put(
+     *     path="/api/chat/conversations/{id}/participants/{userId}/role",
+     *     summary="Promote or demote a member's role (admin / member)",
+     *     tags={"Mensajeria"},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="ID de la conversación grupal",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="userId",
+     *         in="path",
+     *         description="ID del usuario cuyo rol será modificado",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             @OA\Property(property="role", type="string", example="admin", description="Nuevo rol: admin o member")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Rol actualizado exitosamente"
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Petición incorrecta, rol no válido o no es un chat grupal"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="No autorizado (no eres el administrador de la conversación)"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Conversación o participante no encontrado"
+     *     )
+     * )
+     */
+    public function updateParticipantRole(int $id, int $userId, Request $request, ConversationRepository $convRepo, EntityManagerInterface $em): JsonResponse
+    {
+        /** @var User $currentUser */
+        $currentUser = $this->getUser();
+        $conversation = $convRepo->find($id);
+
+        if (!$conversation) {
+            return $this->json(['error' => 'Conversación no encontrada'], 404);
+        }
+
+        if ($conversation->getType() !== 'group') {
+            return $this->json(['error' => 'Los roles solo pueden ser actualizados en conversaciones grupales'], 400);
+        }
+
+        // Verify current user is a group admin
+        $isGroupAdmin = false;
+        foreach ($conversation->getParticipants() as $p) {
+            if ($p->getUser()->getId() === $currentUser->getId()) {
+                if ($p->getRole() === 'admin') {
+                    $isGroupAdmin = true;
+                }
+                break;
+            }
+        }
+
+        if (!$isGroupAdmin) {
+            return $this->json(['error' => 'Solo los administradores de la conversación pueden promover o degradar miembros'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $newRole = $data['role'] ?? null;
+
+        if (!in_array($newRole, ['admin', 'member'])) {
+            return $this->json(['error' => 'El rol debe ser admin o member'], 400);
+        }
+
+        $targetParticipant = null;
+        foreach ($conversation->getParticipants() as $p) {
+            if ($p->getUser()->getId() === $userId && $p->getDeletedAt() === null) {
+                $targetParticipant = $p;
+                break;
+            }
+        }
+
+        if (!$targetParticipant) {
+            return $this->json(['error' => 'Participante activo no encontrado en esta conversación'], 404);
+        }
+
+        // Prevent demoting self if they are the only admin
+        if ($targetParticipant->getUser()->getId() === $currentUser->getId() && $newRole === 'member') {
+            $adminCount = 0;
+            foreach ($conversation->getParticipants() as $p) {
+                if ($p->getDeletedAt() === null && $p->getRole() === 'admin') {
+                    $adminCount++;
+                }
+            }
+            if ($adminCount <= 1) {
+                return $this->json(['error' => 'No puedes degradarte a ti mismo porque eres el único administrador restante en este grupo'], 400);
+            }
+        }
+
+        $targetParticipant->setRole($newRole);
+        $em->flush();
+
+        return $this->json([
+            'status' => 'success',
+            'message' => sprintf('Rol de usuario actualizado a %s exitosamente', $newRole)
+        ]);
     }
 }
