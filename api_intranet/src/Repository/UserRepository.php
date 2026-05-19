@@ -39,12 +39,16 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $this->_em->persist($user);
         $this->_em->flush();
     }
-    public function searchAndPaginate($term, $page = 1, $limit = 25, bool $hasAdminAccess = false, ?string $role = null, $sort = 'id', $order = 'DESC')
+    public function searchAndPaginate($term, $page = 1, $limit = 25, bool $hasAdminAccess = false, ?string $role = null, ?bool $active = null, $sort = 'id', $order = 'DESC')
     {
         $qb = $this->createQueryBuilder('u');
 
-        // Non-admins only see non-deleted users
-        if (!$hasAdminAccess) {
+        // Activity Filter
+        if ($active === true) {
+            $qb->andWhere('u.deletedAt IS NULL');
+        } elseif ($active === false) {
+            $qb->andWhere('u.deletedAt IS NOT NULL');
+        } elseif (!$hasAdminAccess) {
             $qb->andWhere('u.deletedAt IS NULL');
         }
 
