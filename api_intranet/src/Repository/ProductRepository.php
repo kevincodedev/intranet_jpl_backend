@@ -15,13 +15,15 @@ class ProductRepository extends ServiceEntityRepository
     }
 
     //function handling search field and pagination
-    public function searchAndPaginate($term, $page = 1, $limit = 25, ?string $empresa = null, bool $onlyActive = true, $sort = 'id', $order = 'DESC')
+    public function searchAndPaginate($term, $page = 1, $limit = 25, ?string $empresa = null, ?bool $active = null, $sort = 'id', $order = 'DESC')
     {
         $qb = $this->createQueryBuilder('p');
 
         // 1. Activity Filter
-        if ($onlyActive) {
+        if ($active === true) {
             $qb->andWhere('p.deletedAt IS NULL');
+        } elseif ($active === false) {
+            $qb->andWhere('p.deletedAt IS NOT NULL');
         }
 
         // 2. Empresa Filter 
@@ -92,9 +94,11 @@ class ProductRepository extends ServiceEntityRepository
                 'isActive' => $product->isActive(),
             ];
 
-            // If admin, include deletedat info
-            if (!$onlyActive) {
-                $productArray['deletedAt'] = $product->getDeletedAt() ? $product->getDeletedAt()->format('Y-m-d H:i:s') : null;
+            // If deletedAt is present, include it in response
+            if ($product->getDeletedAt() !== null) {
+                $productArray['deletedAt'] = $product->getDeletedAt()->format('Y-m-d H:i:s');
+            } else {
+                $productArray['deletedAt'] = null;
             }
 
             $data[] = $productArray;

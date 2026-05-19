@@ -5,6 +5,8 @@ namespace App\Scripts;
 require_once __DIR__ . '/../../vendor/autoload.php';
 
 use App\Entity\ChatMessage;
+use App\Entity\Conversation;
+use App\Entity\ConversationParticipant;
 use App\Entity\KanbanTask;
 use App\Entity\Product;
 use App\Entity\User;
@@ -337,35 +339,55 @@ class SeedDatabaseCommand extends Command
         $this->em->flush();
 
         // ── 4. CHAT MESSAGES ──────────────────────────────────────────────────
-        $io->section('Chat Messages');
+        $io->section('Chat Conversations & Messages');
 
-        $messagesData = [
-            [
-                'content'  => '¡Bienvenidos al canal de IT! Aquí pueden reportar incidencias y solicitar soporte técnico.',
-                'category' => 'general',
-                'topic'    => 'IT',
-            ],
-            [
-                'content'  => 'Recordatorio: la reunión de planificación del Q2 es el lunes a las 9:00 AM en la sala principal.',
-                'category' => 'general',
-                'topic'    => 'Administración',
-            ],
-            [
-                'content'  => 'Se ha actualizado el inventario de equipos. Por favor revisen el nuevo listado en el portal.',
-                'category' => 'general',
-                'topic'    => 'Inventario',
-            ],
-        ];
+        $adminUser = $createdUsers['jlopez@intranet.com'] ?? null;
+        $regularUser = $createdUsers['mgarcia@intranet.com'] ?? null;
 
-        foreach ($messagesData as $md) {
-            $msg = new ChatMessage();
-            $msg->setContent($md['content']);
-            $msg->setCategory($md['category']);
-            $msg->setTopic($md['topic']);
-            $msg->setSender($superAdmin);
+        if ($adminUser && $regularUser) {
+            // 1. Create a Private Conversation
+            $privateConv = new Conversation();
+            $privateConv->setType('private');
+            $this->em->persist($privateConv);
 
-            $this->em->persist($msg);
-            $io->text("  Created message in topic: <info>{$md['topic']}</info>");
+            $p1 = new ConversationParticipant();
+            $p1->setUser($superAdmin);
+            $p1->setConversation($privateConv);
+            $this->em->persist($p1);
+
+            $p2 = new ConversationParticipant();
+            $p2->setUser($adminUser);
+            $p2->setConversation($privateConv);
+            $this->em->persist($p2);
+
+            $msg1 = new ChatMessage();
+            $msg1->setContent("Hola Juan, ¿cómo va el inventario?");
+            $msg1->setSender($superAdmin);
+            $msg1->setConversation($privateConv);
+            $this->em->persist($msg1);
+
+            $io->text("  Created private conversation between Super Admin and Admin.");
+
+            // 2. Create a Group Conversation
+            $groupConv = new Conversation();
+            $groupConv->setType('group');
+            $groupConv->setName('General IT');
+            $this->em->persist($groupConv);
+
+            foreach ([$superAdmin, $adminUser, $regularUser] as $u) {
+                $p = new ConversationParticipant();
+                $p->setUser($u);
+                $p->setConversation($groupConv);
+                $this->em->persist($p);
+            }
+
+            $msg2 = new ChatMessage();
+            $msg2->setContent("¡Bienvenidos al canal de IT!");
+            $msg2->setSender($superAdmin);
+            $msg2->setConversation($groupConv);
+            $this->em->persist($msg2);
+
+            $io->text("  Created group conversation 'General IT'.");
         }
 
         $this->em->flush();
